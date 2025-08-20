@@ -62,6 +62,7 @@ class HoldingRecord(BaseModel):
     dividends: float
     dividends_per_share: float
     benchmark_return: float
+    benchmark_cummulative_return: float
 
 class HoldingTimeSeriesResponse(BaseModel):
     fund: str
