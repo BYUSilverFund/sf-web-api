@@ -1,6 +1,6 @@
 from fastapi import APIRouter
-from app.services.holdings_service import get_holding_summary
-from app.models.holdings import HoldingRequest, HoldingSummaryResponse
+from app.services.holdings_service import get_holding_summary, get_holding_time_series
+from app.models.holdings import HoldingRequest, HoldingSummaryResponse, HoldingTimeSeriesResponse
 
 router = APIRouter()
 
@@ -14,3 +14,14 @@ router = APIRouter()
 )
 def holding_summary(holding_request: HoldingRequest) -> HoldingSummaryResponse:
     return HoldingSummaryResponse(**get_holding_summary(holding_request))
+
+@router.post(
+    "/time-series",
+    response_model=HoldingTimeSeriesResponse,
+    summary="Get Holding Time Series Values",
+    description="Returns time series values for a given fund/ticker over a date range.",
+    response_description="Time series values for the requested holding.",
+    tags=["Holdings"]
+)
+def holding_time_series(holding_request: HoldingRequest) -> HoldingTimeSeriesResponse:
+    return HoldingTimeSeriesResponse(**get_holding_time_series(holding_request))

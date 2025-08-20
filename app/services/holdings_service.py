@@ -124,3 +124,82 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     }
 
     return result
+
+def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
+    account_map = {
+        'undergrad': 'U4297056',
+        'quant': 'U12702120',
+        'brigham_capital': 'U10797691',
+        'grad': 'U12702064'
+    }
+    
+    client_account_id = account_map[request.fund]
+
+    stk = (
+        pl.read_database(
+            query=f"""
+                SELECT * 
+                FROM holding_returns 
+                WHERE client_account_id = '{client_account_id}' 
+                    AND ticker = '{request.ticker}'
+                    AND date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date
+                ;
+            """,
+            connection=engine
+        )
+        .with_columns(
+            pl.col('weight', 'price', 'value', 'return', 'dividends', 'dividends_per_share').cast(pl.Float64),
+            pl.col('shares').cast(pl.Int32)
+        )
+        .sort('date', 'ticker')
+        .with_columns(
+            pl.col('return').add(1).cum_prod().sub(1).alias('cummulative_return')
+        )
+        .select(
+            'date',
+            'weight',
+            'price',
+            'shares',
+            'value',
+            'return',
+            'cummulative_return',
+            'dividends',
+            'dividends_per_share'
+        )
+    )
+
+    bmk = (
+        pl.read_database(
+            query=f"""
+                SELECT 
+                    date,
+                    return
+                FROM benchmark_new
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+            connection=engine
+        )
+        .select(
+            'date',
+            pl.col('return').cast(pl.Float64)
+        )
+    )
+
+    records = (
+        stk
+        .join(bmk, on=['date'], suffix='_bmk', how='left')
+        .rename({'return': 'return_', 'return_bmk': 'benchmark_return'})
+        .to_dicts()
+    )
+
+    result = {
+        'fund': request.fund,
+        'ticker': request.ticker,
+        'start': request.start,
+        'end': request.end,
+        'records': records
+    }
+
+    return result
