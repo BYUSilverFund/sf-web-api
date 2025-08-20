@@ -178,8 +178,6 @@ def get_fund_time_series(request: FundRequest) -> dict[str, any]:
         .to_dicts()
     )
 
-    print(records[0])
-
     result = {
         "fund": request.fund,
         "start": request.start,
