@@ -2,3 +2,7 @@ fastapi
 polars
 pydantic
 sqlalchemy
+statsmodels
+python-dotenv
+uvicorn
+psycopg2-binary
