@@ -1,7 +1,8 @@
 from fastapi import FastAPI
-from app.routers import fund, holding
+from app.routers import fund, holding, all_funds
 
 app = FastAPI(title="Silver Fund API")
 
 app.include_router(holding.router, prefix="/holdings", tags=["Holding"])
 app.include_router(fund.router, prefix="/fund", tags=['Fund'])
+app.include_router(all_funds.router, prefix="/all-funds", tags=['All Funds'])
