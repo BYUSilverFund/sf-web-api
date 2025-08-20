@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 import os
 import dotenv
@@ -10,7 +10,6 @@ DATABASE_URL = (
     f"@{os.getenv('DB_ENDPOINT')}:{os.getenv('DB_PORT')}/{os.getenv('DB_NAME')}"
 )
 
-# Create SQLAlchemy engine with connection pooling
 engine: Engine = create_engine(
     DATABASE_URL,
     pool_size=10,           # number of connections to keep
