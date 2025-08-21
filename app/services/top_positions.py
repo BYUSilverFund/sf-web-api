@@ -13,18 +13,14 @@ def get_top_positions(request: TopPositionsRequest) -> dict[str, any]:
 
     client_account_id = account_map[request.fund]
 
-    max_date = (
-        pl.read_database(
-            query=f"""
+    max_date = pl.read_database(
+        query=f"""
                 SELECT MAX(report_date) AS max_date
                 FROM positions_new
                 WHERE client_account_id = '{client_account_id}'
             """,
-            connection=engine
-        )
-        ['max_date']
-        .last()
-    )
+        connection=engine,
+    )["max_date"].last()
 
     records = (
         pl.read_database(
@@ -39,18 +35,12 @@ def get_top_positions(request: TopPositionsRequest) -> dict[str, any]:
             LIMIT 10
             ;
             """,
-            connection=engine
+            connection=engine,
         )
-        .with_columns(
-            pl.col('value').cast(pl.Float64)
-        )
+        .with_columns(pl.col("value").cast(pl.Float64))
         .to_dicts()
     )
 
-    results = {
-        'date': max_date,
-        'fund': request.fund,
-        'records': records
-    }
+    results = {"date": max_date, "fund": request.fund, "records": records}
 
     return results

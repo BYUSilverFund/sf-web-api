@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import date
 
+
 class TopPositionsRequest(BaseModel):
     fund: str
 
@@ -11,9 +12,11 @@ class TopPositionsRequest(BaseModel):
             }
         }
 
+
 class TopPositionsRecord(BaseModel):
     ticker: str
     value: float
+
 
 class TopPositionsResponse(BaseModel):
     date: date
