@@ -65,8 +65,8 @@ def get_all_funds_summary(request: AllFundsRequest) -> dict[str, any]:
     alpha = model.params["Intercept"].item() * 252
     beta = model.params["return_bmk"].item()
 
-    value = stk["value"].last()
-    total_return = stk["cummulative_return"].last() * 100
+    value = stk["value"].tail(1).item()
+    total_return = stk["cummulative_return"].tail(1).item() * 100
     volatility = stk["return"].std() * (252**0.5) * 100
     dividends = stk["dividends"].sum()
     dividend_yield = dividends / value * 100

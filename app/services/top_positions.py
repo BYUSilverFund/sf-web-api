@@ -20,7 +20,7 @@ def get_top_positions(request: TopPositionsRequest) -> dict[str, any]:
                 WHERE client_account_id = '{client_account_id}'
             """,
         connection=engine,
-    )["max_date"].last()
+    )["max_date"].tail(1).item()
 
     records = (
         pl.read_database(

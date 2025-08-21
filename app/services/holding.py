@@ -89,10 +89,10 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     alpha = model.params["Intercept"].item() * 252
     beta = model.params["return_bmk"].item()
 
-    shares = stk["shares"].last()
-    price = stk["close"].last()
+    shares = stk["shares"].tail(1).item()
+    price = stk["close"].tail(1).item()
     value = shares * price
-    total_return = stk["cummulative_return"].last() * 100
+    total_return = stk["cummulative_return"].tail(1).item() * 100
     volatility = stk["return"].std() * (252**0.5) * 100
     dividends_per_share = stk["dividends_per_share"].sum()
     dividend_yield = dividends_per_share / price * 100

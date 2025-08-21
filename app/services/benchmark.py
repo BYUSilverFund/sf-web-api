@@ -31,8 +31,8 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
         )
     )
 
-    adjusted_close = bmk["adjusted_close"].last()
-    total_return = bmk["cummulative_return"].last() * 100
+    adjusted_close = bmk["adjusted_close"].tail(1).item()
+    total_return = bmk["cummulative_return"].tail(1).item() * 100
     volatility = bmk["return"].std() * (252**0.5) * 100
     dividends_per_share = bmk["dividends_per_share"].sum()
     dividend_yield = dividends_per_share / adjusted_close * 100
