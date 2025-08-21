@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import date
 
+
 class FundRequest(BaseModel):
     fund: str
     start: date
@@ -8,12 +9,9 @@ class FundRequest(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "fund": "grad",
-                "start": "2024-08-20",
-                "end": "2025-08-20"
-            }
+            "example": {"fund": "grad", "start": "2024-08-20", "end": "2025-08-20"}
         }
+
 
 class FundSummaryResponse(BaseModel):
     fund: str
@@ -45,9 +43,10 @@ class FundSummaryResponse(BaseModel):
                 "alpha": 0.049038466899782446,
                 "beta": 0.942991340240139,
                 "tracking_error": 3.62578673540609,
-                "information_ratio": 0.013524917618821316
+                "information_ratio": 0.013524917618821316,
             }
         }
+
 
 class FundRecord(BaseModel):
     date: date
@@ -57,6 +56,7 @@ class FundRecord(BaseModel):
     dividends: float
     benchmark_return: float
     benchmark_cummulative_return: float
+
 
 class FundTimeSeriesResponse(BaseModel):
     fund: str
@@ -72,24 +72,23 @@ class FundTimeSeriesResponse(BaseModel):
                 "end": "2025-08-20",
                 "records": [
                     {
-                    "date": "2024-08-20",
-                    "value": 1440189.47043864,
-                    "return_": -0.26742265271267684,
-                    "cummulative_return": -0.26742265271267884,
-                    "dividends": 0,
-                    "benchmark_return": -0.25122084490348,
-                    "benchmark_cummulative_return": -0.25122084490347696
+                        "date": "2024-08-20",
+                        "value": 1440189.47043864,
+                        "return_": -0.26742265271267684,
+                        "cummulative_return": -0.26742265271267884,
+                        "dividends": 0,
+                        "benchmark_return": -0.25122084490348,
+                        "benchmark_cummulative_return": -0.25122084490347696,
                     },
                     {
-                    "date": "2024-08-21",
-                    "value": 1451636.34043864,
-                    "return_": 0.7948169483917699,
-                    "cummulative_return": 0.525268775111476,
-                    "dividends": 0,
-                    "benchmark_return": 0.37146868608184797,
-                    "benchmark_cummulative_return": 0.11931463440664203
-                    }
-                ]
+                        "date": "2024-08-21",
+                        "value": 1451636.34043864,
+                        "return_": 0.7948169483917699,
+                        "cummulative_return": 0.525268775111476,
+                        "dividends": 0,
+                        "benchmark_return": 0.37146868608184797,
+                        "benchmark_cummulative_return": 0.11931463440664203,
+                    },
+                ],
             }
         }
-

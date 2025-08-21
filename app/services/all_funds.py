@@ -148,10 +148,10 @@ def get_all_funds_time_series(request: AllFundsRequest) -> dict[str, any]:
         )
         .with_columns(
             pl.col(
-                'return_',
-                'cummulative_return',
-                'benchmark_return',
-                'benchmark_cummulative_return'
+                "return_",
+                "cummulative_return",
+                "benchmark_return",
+                "benchmark_cummulative_return",
             ).mul(100)
         )
         .to_dicts()

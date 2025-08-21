@@ -12,11 +12,12 @@ DATABASE_URL = (
 
 engine: Engine = create_engine(
     DATABASE_URL,
-    pool_size=10,           # number of connections to keep
-    max_overflow=20,        # allow extra temporary connections
-    pool_timeout=30,        # seconds to wait before giving up
-    pool_recycle=1800       # recycle connections every 30 minutes
+    pool_size=10,  # number of connections to keep
+    max_overflow=20,  # allow extra temporary connections
+    pool_timeout=30,  # seconds to wait before giving up
+    pool_recycle=1800,  # recycle connections every 30 minutes
 )
+
 
 def get_connection():
     """Get a pooled DBAPI connection (psycopg2 under the hood)."""
