@@ -63,6 +63,9 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             pl.col("volatility").fill_null(0),  # TODO: This was a quick fix -- Andrew
             pl.col("date").eq(request.end).alias("active"),
         )
+        .with_columns(
+            pl.col('total_return', 'volatility').mul(100)
+        )
         .select(
             'ticker',
             'active',
