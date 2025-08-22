@@ -215,3 +215,52 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
     }
 
     return result
+
+def get_dividends(request: HoldingRequest) -> dict[str, any]:
+    account_map = {
+        "undergrad": "U4297056",
+        "quant": "U12702120",
+        "brigham_capital": "U10797691",
+        "grad": "U12702064",
+    }
+
+    client_account_id = account_map[request.fund]
+
+    dividends = (
+        pl.read_database(
+            query=f"""
+                SELECT * 
+                FROM holding_returns 
+                WHERE client_account_id = '{client_account_id}' 
+                    AND ticker = '{request.ticker}'
+                    AND date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date
+                ;
+            """,
+            connection=engine,
+        )
+        .with_columns(
+            pl.col('shares', 'dividends', 'dividends_per_share').cast(pl.Float64)
+        )
+        .filter(
+            pl.col('dividends').ne(0)
+        )
+        .sort('date')
+        .select(
+            'date',
+            'shares',
+            'dividends_per_share',
+            'dividends'
+        )
+        .to_dicts()
+    )
+
+    result = {
+        "fund": request.fund,
+        "ticker": request.ticker,
+        "start": request.start,
+        "end": request.end,
+        "dividends": dividends 
+    }
+
+    return result

@@ -111,3 +111,16 @@ class HoldingTimeSeriesResponse(BaseModel):
                 ],
             }
         }
+
+class DividendsRecord(BaseModel):
+    date: date
+    shares: int
+    dividends_per_share: float
+    dividends: float
+
+class DividendsResponse(BaseModel):
+    fund: str
+    ticker: str
+    start: date
+    end: date
+    dividends: list[DividendsRecord]
