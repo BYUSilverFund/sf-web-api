@@ -39,6 +39,20 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         )
     )
 
+    rf = pl.read_database(
+        query=f"""
+                SELECT * 
+                FROM risk_free_rate_new
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+        connection=engine,
+    ).with_columns(pl.col("return").cast(pl.Float64)).sort('date').with_columns(
+        pl.col('return').add(1).cum_prod().sub(1).alias('cummulative_return')
+    )
+
+    total_return_rf = rf['cummulative_return'].tail(1).item() * 100
+
     portfolios = (
         stk.sort("date")
         .group_by("portfolio")
@@ -49,7 +63,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             pl.col("dividends").sum(),
         )
         .with_columns(
-            pl.col("total_return").truediv("volatility").alias("sharpe_ratio"),
+            pl.col("total_return").sub(total_return_rf).truediv("volatility").alias("sharpe_ratio"),
             pl.col("dividends").truediv("value").alias("dividend_yield"),
         )
         .with_columns(pl.col("total_return", "volatility", "dividend_yield").mul(100))
