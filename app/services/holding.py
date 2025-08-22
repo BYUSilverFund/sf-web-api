@@ -12,36 +12,38 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         "grad": "U12702064",
     }
 
+    print(request)
+
     client_account_id = account_map[request.fund]
 
     stk = (
         pl.read_database(
             query=f"""
                 SELECT * 
-                FROM returns 
+                FROM holding_returns 
                 WHERE client_account_id = '{client_account_id}' 
-                    AND symbol = '{request.ticker}'
-                    AND report_date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY report_date
+                    AND ticker = '{request.ticker}'
+                    AND date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date
                 ;
             """,
             connection=engine,
         )
-        .with_columns(pl.col("return", "dividends_per_share", "close").cast(pl.Float64))
-        .sort("report_date", "symbol")
+        .with_columns(pl.col("return", "dividends_per_share", "price").cast(pl.Float64))
+        .sort("date", "ticker")
         .with_columns(
             pl.col("return")
             .add(1)
             .cum_prod()
             .sub(1)
-            .over("symbol")
+            .over("ticker")
             .alias("cummulative_return")
         )
         .select(
-            pl.col("report_date").alias("date"),
-            pl.col("symbol").alias("ticker"),
+            "date",
+            "ticker",
             "shares",
-            "close",
+            "price",
             "return",
             "cummulative_return",
             "dividends_per_share",
@@ -91,7 +93,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
 
     active = stk['date'].tail(1).item() == request.end
     shares = stk["shares"].tail(1).item()
-    price = stk["close"].tail(1).item()
+    price = stk["price"].tail(1).item()
     value = shares * price
     total_return = stk["cummulative_return"].tail(1).item() * 100
     volatility = stk["return"].std() * (252**0.5) * 100
