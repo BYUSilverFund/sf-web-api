@@ -29,7 +29,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
             """,
             connection=engine,
         )
-        .with_columns(pl.col("return", "dividends_per_share", "price").cast(pl.Float64))
+        .with_columns(pl.col("return", "dividends", "dividends_per_share", "price").cast(pl.Float64))
         .sort("date", "ticker")
         .with_columns(
             pl.col("return")
@@ -46,6 +46,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
             "price",
             "return",
             "cummulative_return",
+            "dividends",
             "dividends_per_share",
         )
     )
@@ -97,8 +98,9 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     value = shares * price
     total_return = stk["cummulative_return"].tail(1).item() * 100
     volatility = stk["return"].std() * (252**0.5) * 100
+    dividends = stk['dividends'].sum()
     dividends_per_share = stk["dividends_per_share"].sum()
-    dividend_yield = dividends_per_share / price * 100
+    dividend_yield = dividends / value * 100
 
     result = {
         "fund": request.fund,
@@ -111,6 +113,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         "value": value,
         "total_return": total_return,
         "volatility": volatility,
+        "dividends": dividends,
         "dividends_per_share": dividends_per_share,
         "dividend_yield": dividend_yield,
         "alpha": alpha,
