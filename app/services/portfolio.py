@@ -27,6 +27,9 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
+        .with_columns(
+            pl.col('return').replace({-1: 0}) # TODO: Fix so that the first day in the max history isn't -1 return.
+        )
         .sort("date")
         .with_columns(
             pl.col("return").add(1).cum_prod().sub(1).alias("cummulative_return")
@@ -130,6 +133,9 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
+        .with_columns(
+            pl.col('return').replace({-1: 0}) # TODO: Fix so that the first day in the max history isn't -1 return.
+        )
         .sort("date")
         .with_columns(
             pl.col("return").add(1).cum_prod().sub(1).alias("cummulative_return")
@@ -153,7 +159,6 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
         .select(
             "date",
             "return",
-            pl.col("return").add(1).cum_prod().sub(1).alias("cummulative_return"),
         )
     )
 
@@ -161,8 +166,7 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
         stk.join(bmk, on=["date"], suffix="_bmk", how="left")
         .sort("date")
         .with_columns(
-            pl.col("return_bmk").fill_null(0),
-            pl.col("cummulative_return_bmk").fill_null(strategy="forward"),
+            pl.col("return_bmk").add(1).cum_prod().sub(1).fill_null(strategy="forward").alias("cummulative_return_bmk"),
         )
         .rename(
             {

@@ -1,8 +1,6 @@
 import polars as pl
 from app.db import engine
 from app.models.all_portfolios import AllPortfoliosRequest
-from rich import print
-
 
 def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
     account_map = {
@@ -24,6 +22,9 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
+        .with_columns(
+            pl.col('return').replace({-1: 0}) # TODO: Fix so that the first day in the max history isn't -1 return.
+        )
         .sort("date")
         .with_columns(
             pl.col("return")

@@ -12,8 +12,6 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         "grad": "U12702064",
     }
 
-    print(request)
-
     client_account_id = account_map[request.fund]
 
     stk = (
@@ -185,12 +183,15 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
         .select(
             "date",
             "return",
-            pl.col("return").add(1).cum_prod().sub(1).alias("cummulative_return"),
         )
     )
 
     records = (
         stk.join(bmk, on=["date"], suffix="_bmk", how="left")
+        .sort('date')
+        .with_columns(
+            pl.col("return_bmk").add(1).cum_prod().sub(1).fill_null(strategy="forward").alias("cummulative_return_bmk"),
+        )
         .rename(
             {
                 "return": "return_",

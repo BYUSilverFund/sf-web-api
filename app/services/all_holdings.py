@@ -1,8 +1,6 @@
 import polars as pl
 from app.db import engine
 from app.models.all_holdings import AllHoldingsRequest
-from rich import print
-
 
 def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
     account_map = {
