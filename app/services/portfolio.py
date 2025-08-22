@@ -1,10 +1,10 @@
 import polars as pl
 from app.db import engine
 import statsmodels.formula.api as smf
-from app.models.fund import FundRequest
+from app.models.portfolio import PortfolioRequest
 
 
-def get_fund_summary(request: FundRequest) -> dict[str, any]:
+def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     account_map = {
         "undergrad": "U4297056",
         "quant": "U12702120",
@@ -103,7 +103,7 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
     return result
 
 
-def get_fund_time_series(request: FundRequest) -> dict[str, any]:
+def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
     account_map = {
         "undergrad": "U4297056",
         "quant": "U12702120",

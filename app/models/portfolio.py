@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from datetime import date
 
 
-class FundRequest(BaseModel):
+class PortfolioRequest(BaseModel):
     fund: str
     start: date
     end: date
@@ -13,7 +13,7 @@ class FundRequest(BaseModel):
         }
 
 
-class FundSummaryResponse(BaseModel):
+class PortfolioSummaryResponse(BaseModel):
     fund: str
     start: date
     end: date
@@ -48,7 +48,7 @@ class FundSummaryResponse(BaseModel):
         }
 
 
-class FundRecord(BaseModel):
+class PortfolioRecord(BaseModel):
     date: date
     value: float
     return_: float
@@ -58,11 +58,11 @@ class FundRecord(BaseModel):
     benchmark_cummulative_return: float
 
 
-class FundTimeSeriesResponse(BaseModel):
+class PortfolioTimeSeriesResponse(BaseModel):
     fund: str
     start: date
     end: date
-    records: list[FundRecord]
+    records: list[PortfolioRecord]
 
     class Config:
         json_schema_extra = {
