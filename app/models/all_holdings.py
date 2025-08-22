@@ -21,6 +21,7 @@ class AllHoldingsRecord(BaseModel):
     volatility: float
     dividends: float
 
+
 class AllHoldingsSummaryResponse(BaseModel):
     start: date
     end: date

@@ -5,7 +5,6 @@ from rich import print
 
 
 def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
-
     account_map = {
         "U4297056": "undergrad",
         "U12702120": "quant",
@@ -27,37 +26,37 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
         .sort("date")
         .with_columns(
-            pl.col("return").add(1).cum_prod().sub(1).over('client_account_id').alias("cummulative_return"),
-            pl.col('client_account_id').replace(account_map).alias('portfolio')
+            pl.col("return")
+            .add(1)
+            .cum_prod()
+            .sub(1)
+            .over("client_account_id")
+            .alias("cummulative_return"),
+            pl.col("client_account_id").replace(account_map).alias("portfolio"),
         )
-        .select("date", "portfolio", "value", "return", "cummulative_return", "dividends")
+        .select(
+            "date", "portfolio", "value", "return", "cummulative_return", "dividends"
+        )
     )
 
     portfolios = (
-        stk
-        .sort('date')
-        .group_by('portfolio')
+        stk.sort("date")
+        .group_by("portfolio")
         .agg(
-            pl.col('value').last(),
-            pl.col('cummulative_return').last().alias('total_return'),
-            pl.col('return').std().mul(pl.lit(252).sqrt()).alias('volatility'),
-            pl.col('dividends').sum()
+            pl.col("value").last(),
+            pl.col("cummulative_return").last().alias("total_return"),
+            pl.col("return").std().mul(pl.lit(252).sqrt()).alias("volatility"),
+            pl.col("dividends").sum(),
         )
         .with_columns(
-            pl.col('total_return').truediv('volatility').alias('sharpe_ratio'),
-            pl.col('dividends').truediv('value').alias('dividend_yield')
+            pl.col("total_return").truediv("volatility").alias("sharpe_ratio"),
+            pl.col("dividends").truediv("value").alias("dividend_yield"),
         )
-        .with_columns(
-            pl.col('total_return', 'volatility', 'dividend_yield').mul(100)
-        )
-        .sort('portfolio')
+        .with_columns(pl.col("total_return", "volatility", "dividend_yield").mul(100))
+        .sort("portfolio")
         .to_dicts()
     )
 
-    result = {
-        'start': request.start,
-        'end': request.end,
-        'portfolios': portfolios
-    }
+    result = {"start": request.start, "end": request.end, "portfolios": portfolios}
 
     return result

@@ -1,6 +1,10 @@
 from fastapi import APIRouter
 from app.services.portfolio import get_portfolio_summary, get_portfolio_time_series
-from app.models.portfolio import PortfolioRequest, PortfolioSummaryResponse, PortfolioTimeSeriesResponse
+from app.models.portfolio import (
+    PortfolioRequest,
+    PortfolioSummaryResponse,
+    PortfolioTimeSeriesResponse,
+)
 
 router = APIRouter()
 
@@ -25,5 +29,7 @@ def portfolio_summary(holding_request: PortfolioRequest) -> PortfolioSummaryResp
     response_description="Time series values for the requested fund.",
     tags=["Portfolio"],
 )
-def portfolio_time_series(holding_request: PortfolioRequest) -> PortfolioTimeSeriesResponse:
+def portfolio_time_series(
+    holding_request: PortfolioRequest,
+) -> PortfolioTimeSeriesResponse:
     return PortfolioTimeSeriesResponse(**get_portfolio_time_series(holding_request))

@@ -16,5 +16,7 @@ router = APIRouter()
     response_description="Summary metrics for all holdings for a specific fund.",
     tags=["All Holdings"],
 )
-def all_holdings_summary(holding_request: AllHoldingsRequest) -> AllHoldingsSummaryResponse:
+def all_holdings_summary(
+    holding_request: AllHoldingsRequest,
+) -> AllHoldingsSummaryResponse:
     return AllHoldingsSummaryResponse(**get_all_holdings_summary(holding_request))

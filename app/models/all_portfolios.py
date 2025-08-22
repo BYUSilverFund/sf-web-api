@@ -7,9 +7,7 @@ class AllPortfoliosRequest(BaseModel):
     end: date
 
     class Config:
-        json_schema_extra = {
-            "example": {"start": "2024-08-20", "end": "2025-08-20"}
-        }
+        json_schema_extra = {"example": {"start": "2024-08-20", "end": "2025-08-20"}}
 
 
 class AllPortfoliosRecord(BaseModel):
@@ -20,6 +18,7 @@ class AllPortfoliosRecord(BaseModel):
     volatility: float
     dividends: float
     dividend_yield: float
+
 
 class AllPortfoliosSummaryResponse(BaseModel):
     start: date

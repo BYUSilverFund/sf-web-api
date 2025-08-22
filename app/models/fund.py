@@ -24,6 +24,7 @@ class FundSummaryResponse(BaseModel):
     tracking_error: float
     information_ratio: float
 
+
 class FundRecord(BaseModel):
     date: date
     value: float

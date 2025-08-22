@@ -58,11 +58,13 @@ class HoldingTimeSeriesResponse(BaseModel):
     end: date
     records: list[HoldingRecord]
 
+
 class DividendsRecord(BaseModel):
     date: date
     shares: int
     dividends_per_share: float
     dividends: float
+
 
 class DividendsResponse(BaseModel):
     fund: str

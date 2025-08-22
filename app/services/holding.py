@@ -91,7 +91,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     alpha = model.params["Intercept"].item() * 252
     beta = model.params["return_bmk"].item()
 
-    active = stk['date'].tail(1).item() == request.end
+    active = stk["date"].tail(1).item() == request.end
     shares = stk["shares"].tail(1).item()
     price = stk["price"].tail(1).item()
     value = shares * price
@@ -216,6 +216,7 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
 
     return result
 
+
 def get_dividends(request: HoldingRequest) -> dict[str, any]:
     account_map = {
         "undergrad": "U4297056",
@@ -240,18 +241,11 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(
-            pl.col('shares', 'dividends', 'dividends_per_share').cast(pl.Float64)
+            pl.col("shares", "dividends", "dividends_per_share").cast(pl.Float64)
         )
-        .filter(
-            pl.col('dividends').ne(0)
-        )
-        .sort('date')
-        .select(
-            'date',
-            'shares',
-            'dividends_per_share',
-            'dividends'
-        )
+        .filter(pl.col("dividends").ne(0))
+        .sort("date")
+        .select("date", "shares", "dividends_per_share", "dividends")
         .to_dicts()
     )
 
@@ -260,7 +254,7 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
         "ticker": request.ticker,
         "start": request.start,
         "end": request.end,
-        "dividends": dividends 
+        "dividends": dividends,
     }
 
     return result

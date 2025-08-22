@@ -29,5 +29,7 @@ def benchmark_summary(holding_request: BenchmarkRequest) -> BenchmarkSummaryResp
     response_description="Time series values for benchmark.",
     tags=["Benchmark"],
 )
-def benchmark_time_series(holding_request: BenchmarkRequest) -> BenchmarkTimeSeriesResponse:
+def benchmark_time_series(
+    holding_request: BenchmarkRequest,
+) -> BenchmarkTimeSeriesResponse:
     return BenchmarkTimeSeriesResponse(**get_benchmark_time_series(holding_request))

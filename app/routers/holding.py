@@ -1,10 +1,14 @@
 from fastapi import APIRouter
-from app.services.holding import get_holding_summary, get_holding_time_series, get_dividends
+from app.services.holding import (
+    get_holding_summary,
+    get_holding_time_series,
+    get_dividends,
+)
 from app.models.holding import (
     HoldingRequest,
     HoldingSummaryResponse,
     HoldingTimeSeriesResponse,
-    DividendsResponse
+    DividendsResponse,
 )
 
 router = APIRouter()
