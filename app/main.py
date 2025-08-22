@@ -1,10 +1,11 @@
 from fastapi import FastAPI
-from app.routers import fund, holding, benchmark, portfolio, top_positions, all_portfolios
+from app.routers import fund, holding, benchmark, portfolio, top_positions, all_portfolios, all_holdings
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Silver Fund API")
 
 app.include_router(holding.router, prefix="/holdings", tags=["Holding"])
+app.include_router(all_holdings.router, prefix="/all-holdings", tags=["All Holdings"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
 app.include_router(all_portfolios.router, prefix="/all-portfolios", tags=["All Portfolios"])
 app.include_router(fund.router, prefix="/fund", tags=["Fund"])

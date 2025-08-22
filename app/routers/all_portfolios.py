@@ -16,5 +16,5 @@ router = APIRouter()
     response_description="Summary metrics for all portfolios.",
     tags=["All Portfolios"],
 )
-def fund_summary(holding_request: AllPortfoliosRequest) -> AllPortfoliosSummaryResponse:
+def all_portfolios_summary(holding_request: AllPortfoliosRequest) -> AllPortfoliosSummaryResponse:
     return AllPortfoliosSummaryResponse(**get_all_portfolios_summary(holding_request))

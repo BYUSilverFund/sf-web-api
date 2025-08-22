@@ -17,7 +17,7 @@ router = APIRouter()
     response_description="Summary metrics for benchmark.",
     tags=["Benchmark"],
 )
-def fund_summary(holding_request: BenchmarkRequest) -> BenchmarkSummaryResponse:
+def benchmark_summary(holding_request: BenchmarkRequest) -> BenchmarkSummaryResponse:
     return BenchmarkSummaryResponse(**get_benchmark_summary(holding_request))
 
 
@@ -29,5 +29,5 @@ def fund_summary(holding_request: BenchmarkRequest) -> BenchmarkSummaryResponse:
     response_description="Time series values for benchmark.",
     tags=["Benchmark"],
 )
-def fund_time_series(holding_request: BenchmarkRequest) -> BenchmarkTimeSeriesResponse:
+def benchmark_time_series(holding_request: BenchmarkRequest) -> BenchmarkTimeSeriesResponse:
     return BenchmarkTimeSeriesResponse(**get_benchmark_time_series(holding_request))
