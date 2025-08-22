@@ -26,7 +26,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             """,
             connection=engine,
         )
-        .with_columns(pl.col("return", "dividends_per_share", "price").cast(pl.Float64))
+        .with_columns(pl.col("return", "dividends_per_share", "value", "price").cast(pl.Float64))
         .sort("date", "ticker")
         .with_columns(
             pl.col("return")
@@ -52,10 +52,15 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         stk
         .group_by('ticker')
         .agg(
+            pl.col('date').max(),
             pl.col('value').last(),
             pl.col('cummulative_return').last().alias('total_return'),
             pl.col('return').std().mul(pl.lit(252).sqrt()).alias('volatility'),
             pl.col('dividends_per_share').mul('shares').sum().alias('dividends')
+        )
+        .with_columns(
+            pl.col('volatility').fill_null(0),
+            pl.col('date').eq(request.end).alias('active')
         )
         .sort('value', descending=True)
         .to_dicts()

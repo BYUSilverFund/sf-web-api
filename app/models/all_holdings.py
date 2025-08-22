@@ -15,6 +15,7 @@ class AllHoldingsRequest(BaseModel):
 
 class AllHoldingsRecord(BaseModel):
     ticker: str
+    active: bool
     value: float
     total_return: float
     volatility: float

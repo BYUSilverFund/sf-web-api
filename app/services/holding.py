@@ -89,6 +89,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     alpha = model.params["Intercept"].item() * 252
     beta = model.params["return_bmk"].item()
 
+    active = stk['date'].tail(1).item() == request.end
     shares = stk["shares"].tail(1).item()
     price = stk["close"].tail(1).item()
     value = shares * price
@@ -102,6 +103,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         "ticker": request.ticker,
         "start": request.start,
         "end": request.end,
+        "active": active,
         "shares": shares,
         "price": price,
         "value": value,
