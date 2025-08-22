@@ -59,7 +59,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             pl.col('dividends_per_share').mul('shares').sum().alias('dividends')
         )
         .with_columns(
-            pl.col('volatility').fill_null(0),
+            pl.col('volatility').fill_null(0), # TODO: This was a quick fix -- Andrew
             pl.col('date').eq(request.end).alias('active')
         )
         .sort('value', descending=True)
