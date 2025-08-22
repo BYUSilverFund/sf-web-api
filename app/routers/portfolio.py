@@ -23,7 +23,7 @@ def portfolio_summary(holding_request: PortfolioRequest) -> PortfolioSummaryResp
     summary="Get Fund Time Series Values",
     description="Returns time series values for a given fund over a date range.",
     response_description="Time series values for the requested fund.",
-    tags=["Fund"],
+    tags=["Portfolio"],
 )
 def fund_time_series(holding_request: PortfolioRequest) -> PortfolioTimeSeriesResponse:
     return PortfolioTimeSeriesResponse(**get_portfolio_time_series(holding_request))

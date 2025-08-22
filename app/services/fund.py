@@ -1,10 +1,10 @@
 import polars as pl
 from app.db import engine
 import statsmodels.formula.api as smf
-from app.models.all_funds import AllFundsRequest
+from app.models.fund import FundRequest
 
 
-def get_all_funds_summary(request: AllFundsRequest) -> dict[str, any]:
+def get_fund_summary(request: FundRequest) -> dict[str, any]:
     stk = (
         pl.read_database(
             query=f"""
@@ -92,7 +92,7 @@ def get_all_funds_summary(request: AllFundsRequest) -> dict[str, any]:
     return result
 
 
-def get_all_funds_time_series(request: AllFundsRequest) -> dict[str, any]:
+def get_fund_time_series(request: FundRequest) -> dict[str, any]:
     stk = (
         pl.read_database(
             query=f"""
