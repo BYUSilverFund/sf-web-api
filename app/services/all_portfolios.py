@@ -1,5 +1,5 @@
 import polars as pl
-import polars_ols as pls
+import polars_ols as pls  # noqa: F401
 from app.db import engine
 from app.models.all_portfolios import AllPortfoliosRequest
 
@@ -61,16 +61,18 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
                 ORDER BY date;
             """,
         connection=engine,
-    ).with_columns(pl.col("return").cast(pl.Float64)).sort('date').with_columns(
-        pl.col('return').add(1).cum_prod().sub(1).alias('cummulative_return')
-    )
-
-    total_return_rf = rf['cummulative_return'].tail(1).item() * 100
+    ).with_columns(pl.col("return").cast(pl.Float64)).sort('date')
 
     portfolios = (
         stk
         .join(rf, on='date', how='left', suffix='_rf')
         .join(bmk, on='date', how='left', suffix='_bmk')
+        .with_columns(
+            pl.col("return_rf").fill_null(strategy="forward")  # Fill last value
+        )
+        .with_columns(
+            pl.col('return_rf').add(1).cum_prod().sub(1).alias('cummulative_return_rf')
+        )
         .with_columns(
             pl.col('return').sub('return_rf').alias('xs_return'),
             pl.col('return_bmk').sub('return_rf').alias('xs_return_bmk'),
@@ -81,6 +83,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         .agg(
             pl.col("value").last(),
             pl.col("cummulative_return").last().alias("total_return"),
+            pl.col("cummulative_return_rf").last().alias('total_return_rf'),
             pl.col("return").std().mul(pl.lit(252).sqrt()).alias("volatility"),
             pl.col("dividends").sum(),
             pl.col('active_return').std().mul(pl.lit(252).sqrt()).alias('tracking_error'),
@@ -92,7 +95,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             pl.col('alpha').mul(252)
         )
         .with_columns(
-            pl.col("total_return").sub(total_return_rf).truediv("volatility").alias("sharpe_ratio"),
+            pl.col("total_return").sub('total_return_rf').truediv("volatility").alias("sharpe_ratio"),
             pl.col("dividends").truediv("value").alias("dividend_yield"),
             pl.col('alpha').truediv('tracking_error').alias('information_ratio')
         )

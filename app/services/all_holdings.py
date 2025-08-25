@@ -1,7 +1,7 @@
 import polars as pl
 from app.db import engine
 from app.models.all_holdings import AllHoldingsRequest
-import polars_ols as pls
+import polars_ols as pls  # noqa: F401
 
 def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
     account_map = {
@@ -75,6 +75,9 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         stk
         .join(rf, on='date', how='left', suffix="_rf")
         .join(bmk, on='date', how='left', suffix='_bmk')
+        .with_columns(
+            pl.col("return_rf").fill_null(strategy="forward")  # Fill last value
+        )
         .with_columns(
             pl.col('return').sub('return_rf').alias('xs_return'),
             pl.col('return_bmk').sub('return_rf').alias('xs_return_bmk')
