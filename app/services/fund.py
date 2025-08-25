@@ -47,9 +47,7 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
                 ORDER BY date;
             """,
         connection=engine,
-    ).with_columns(pl.col("return").cast(pl.Float64)).sort('date').with_columns(
-        pl.col('return').add(1).cum_prod().sub(1).alias('cummulative_return')
-    )
+    ).with_columns(pl.col("return").cast(pl.Float64)).sort('date')
 
     df_wide = (
         stk.join(bmk, on=["date"], suffix="_bmk", how="left")
@@ -61,23 +59,30 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
             pl.col("return_rf").fill_null(strategy="forward"),  # Fill last value
             pl.col("return").sub("return_bmk").alias("return_active"),
         )
+        .with_columns(
+            pl.col('return_rf').add(1).cum_prod().sub(1).alias('cummulative_return_rf')
+        )
         .sort("date")
         .with_columns(pl.col("return_stk", "return_bmk").sub("return_rf"))
     )
 
     model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
 
-    alpha = model.params["Intercept"].item() * 252
+
+    alpha = model.params["Intercept"].item() * 100 * 252
     beta = model.params["return_bmk"].item()
 
-    total_return_rf = rf['cummulative_return'].tail(1).item() * 100
+    n_days = len(stk['date'].unique())
+    total_return_rf = df_wide['cummulative_return_rf'].last() * 100 
+    total_return_rf_annualized = total_return_rf * 252 / n_days
 
-    value = stk["value"].tail(1).item()
-    total_return = stk["cummulative_return"].tail(1).item() * 100
-    volatility = stk["return"].std() * (252**0.5) * 100
+    value = stk["value"].last()
+    total_return = stk["cummulative_return"].last() * 100
+    total_return_annualized = total_return * 252 / n_days
+    volatility = stk["return"].std() * 100 * (252**0.5)
     dividends = stk["dividends"].sum()
     dividend_yield = dividends / value * 100
-    sharpe_ratio = (total_return - total_return_rf) / volatility
+    sharpe_ratio = (total_return_annualized - total_return_rf_annualized) / volatility
     tracking_error = df_wide["return_active"].std() * (252**0.5) * 100
     information_ratio = alpha / tracking_error
 

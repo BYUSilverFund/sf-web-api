@@ -71,7 +71,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             pl.col("return_rf").fill_null(strategy="forward")  # Fill last value
         )
         .with_columns(
-            pl.col('return_rf').add(1).cum_prod().sub(1).alias('cummulative_return_rf')
+            pl.col('return_rf').add(1).cum_prod().sub(1).over('portfolio').alias('cummulative_return_rf')
         )
         .with_columns(
             pl.col('return').sub('return_rf').alias('xs_return'),
@@ -81,6 +81,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         .sort("date")
         .group_by("portfolio")
         .agg(
+            pl.col('date').n_unique().alias('n_days'),
             pl.col("value").last(),
             pl.col("cummulative_return").last().alias("total_return"),
             pl.col("cummulative_return_rf").last().alias('total_return_rf'),
@@ -92,18 +93,21 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         .unnest('coefficients')
         .rename({'xs_return_bmk': 'beta', 'const': 'alpha'})
         .with_columns(
-            pl.col('alpha').mul(252)
+            pl.col('alpha').mul(252),
+            pl.col('total_return').mul(252).truediv('n_days').alias('total_return_annualized'),
+            pl.col('total_return_rf').mul(252).truediv('n_days').alias('total_return_rf_annualized'),
         )
         .with_columns(
-            pl.col("total_return").sub('total_return_rf').truediv("volatility").alias("sharpe_ratio"),
+            pl.col("total_return_annualized").sub('total_return_rf_annualized').truediv("volatility").alias("sharpe_ratio"),
             pl.col("dividends").truediv("value").alias("dividend_yield"),
             pl.col('alpha').truediv('tracking_error').alias('information_ratio')
         )
-        .with_columns(pl.col("total_return", "volatility", "dividend_yield", "alpha").mul(100))
+        .with_columns(pl.col("total_return", "total_return_rf", "volatility", "tracking_error", "dividend_yield", "alpha").mul(100))
         .select(
             'portfolio',
             'value',
             'total_return',
+            'total_return_rf',
             'volatility',
             'sharpe_ratio',
             'dividends',
@@ -113,7 +117,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             'tracking_error',
             'information_ratio'
         )
-        .sort("portfolio")
+        .sort("value", descending=True)
         .to_dicts()
     )
 
