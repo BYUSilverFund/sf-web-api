@@ -3,12 +3,14 @@ from app.services.holding import (
     get_holding_summary,
     get_holding_time_series,
     get_dividends,
+    get_trades
 )
 from app.models.holding import (
     HoldingRequest,
     HoldingSummaryResponse,
     HoldingTimeSeriesResponse,
     DividendsResponse,
+    TradesResponse
 )
 
 router = APIRouter()
@@ -42,9 +44,20 @@ def holding_time_series(holding_request: HoldingRequest) -> HoldingTimeSeriesRes
     "/dividends",
     response_model=DividendsResponse,
     summary="Get Dividends",
-    description="Returns dividends fund/ticker over a date range.",
+    description="Returns dividends for a fund/ticker over a date range.",
     response_description="Dividends for the requested holding.",
     tags=["Holding"],
 )
 def dividends(holding_request: HoldingRequest) -> DividendsResponse:
     return DividendsResponse(**get_dividends(holding_request))
+
+@router.post(
+    "/trades",
+    response_model=TradesResponse,
+    summary="Get Trades",
+    description="Returns trades for a fund/ticker over a date range.",
+    response_description="Trades for the requested holding.",
+    tags=["Holding"],
+)
+def trades(holding_request: HoldingRequest) -> TradesResponse:
+    return TradesResponse(**get_trades(holding_request))

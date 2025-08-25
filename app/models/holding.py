@@ -72,3 +72,19 @@ class DividendsResponse(BaseModel):
     start: date
     end: date
     dividends: list[DividendsRecord]
+
+
+class TradesRecord(BaseModel):
+    date: date
+    type: str
+    shares: int
+    price: float
+    value: float
+
+
+class TradesResponse(BaseModel):
+    fund: str
+    ticker: str
+    start: date
+    end: date
+    trades: list[TradesRecord]

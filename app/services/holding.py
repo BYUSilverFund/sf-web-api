@@ -270,3 +270,52 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
     }
 
     return result
+
+def get_trades(request: HoldingRequest) -> dict[str, any]:
+    account_map = {
+        "undergrad": "U4297056",
+        "quant": "U12702120",
+        "brigham_capital": "U10797691",
+        "grad": "U12702064",
+    }
+
+    client_account_id = account_map[request.fund]
+
+    trades = (
+        pl.read_database(
+            query=f"""
+                SELECT * 
+                FROM trades_new 
+                WHERE client_account_id = '{client_account_id}' 
+                    AND symbol = '{request.ticker}'
+                    AND report_date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY report_date
+                ;
+            """,
+            connection=engine,
+        )
+        .with_columns(
+            pl.col('quantity', 'trade_price').cast(pl.Float64)
+        )
+        .select(
+            pl.col('report_date').alias('date'),
+            pl.col('buy_sell').alias('type'),
+            pl.col('quantity').alias('shares'),
+            pl.col('trade_price').alias('price'),
+            pl.col('quantity').mul('trade_price').alias('value')
+        )
+        .sort('date', 'value', descending=True)
+    )
+
+    min_date = trades['date'].min()
+    max_date = trades['date'].max()
+
+    result = {
+        "fund": request.fund,
+        "ticker": request.ticker,
+        "start": min_date,
+        "end": max_date,
+        "trades": trades.to_dicts(),
+    }
+
+    return result
