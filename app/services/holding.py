@@ -256,17 +256,15 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
         .filter(pl.col("dividends").ne(0))
         .sort("date")
         .select("date", "shares", "dividends_per_share", "dividends")
+        .to_dicts()
     )
-
-    min_date = dividends['date'].min()
-    max_date = dividends['date'].max()
 
     result = {
         "fund": request.fund,
         "ticker": request.ticker,
-        "start": min_date,
-        "end": max_date,
-        "dividends": dividends.to_dicts(),
+        "start": request.start,
+        "end": request.end,
+        "dividends": dividends,
     }
 
     return result
@@ -305,17 +303,15 @@ def get_trades(request: HoldingRequest) -> dict[str, any]:
             pl.col('quantity').mul('trade_price').alias('value')
         )
         .sort('date', 'value', descending=True)
+        .to_dicts()
     )
-
-    min_date = trades['date'].min()
-    max_date = trades['date'].max()
 
     result = {
         "fund": request.fund,
         "ticker": request.ticker,
-        "start": min_date,
-        "end": max_date,
-        "trades": trades.to_dicts(),
+        "start": request.start,
+        "end": request.end,
+        "trades": trades,
     }
 
     return result
