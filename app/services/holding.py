@@ -100,11 +100,14 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     dividends_per_share = stk["dividends_per_share"].sum()
     dividend_yield = dividends / value * 100
 
+    min_date = stk['date'].min()
+    max_date = stk['date'].max()
+
     result = {
         "fund": request.fund,
         "ticker": request.ticker,
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "active": active,
         "shares": shares,
         "price": price,
@@ -210,11 +213,14 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
         .to_dicts()
     )
 
+    min_date = stk['date'].min()
+    max_date = stk['date'].max()
+
     result = {
         "fund": request.fund,
         "ticker": request.ticker,
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "records": records,
     }
 
@@ -253,11 +259,14 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
         .to_dicts()
     )
 
+    min_date = dividends['date'].min()
+    max_date = dividends['date'].max()
+
     result = {
         "fund": request.fund,
         "ticker": request.ticker,
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "dividends": dividends,
     }
 

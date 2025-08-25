@@ -86,9 +86,12 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
     tracking_error = df_wide["return_active"].std() * (252**0.5) * 100
     information_ratio = alpha / tracking_error
 
+    min_date = stk['date'].min()
+    max_date = stk['date'].max()
+
     result = {
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "value": value,
         "total_return": total_return,
         "volatility": volatility,
@@ -170,9 +173,12 @@ def get_fund_time_series(request: FundRequest) -> dict[str, any]:
         .to_dicts()
     )
 
+    min_date = stk['date'].min()
+    max_date = stk['date'].max()
+
     result = {
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "records": records,
     }
 

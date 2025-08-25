@@ -127,10 +127,13 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         .to_dicts()
     )
 
+    min_date = stk['date'].min()
+    max_date = stk['date'].max()
+
     result = {
         "fund": request.fund,
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "holdings": holdings,
     }
 

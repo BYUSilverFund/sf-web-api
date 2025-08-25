@@ -121,6 +121,9 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         .to_dicts()
     )
 
-    result = {"start": request.start, "end": request.end, "portfolios": portfolios}
+    min_date = stk['date'].min()
+    max_date = stk['date'].max()
+
+    result = {"start": min_date, "end": max_date, "portfolios": portfolios}
 
     return result

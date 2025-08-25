@@ -71,9 +71,12 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
     dividend_yield = dividends_per_share / adjusted_close * 100
     sharpe_ratio = (total_return_annualized - total_return_rf_annualized) / volatility
 
+    min_date = bmk['date'].min()
+    max_date = bmk['date'].max()
+
     result = {
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "adjusted_close": adjusted_close,
         "total_return": total_return,
         "volatility": volatility,
@@ -129,9 +132,12 @@ def get_benchmark_time_series(request: BenchmarkRequest) -> dict[str, any]:
         .to_dicts()
     )
 
+    min_date = bmk['date'].min()
+    max_date = bmk['date'].max()
+
     result = {
-        "start": request.start,
-        "end": request.end,
+        "start": min_date,
+        "end": max_date,
         "records": records,
     }
 
