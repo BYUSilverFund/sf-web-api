@@ -256,7 +256,6 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
         .filter(pl.col("dividends").ne(0))
         .sort("date")
         .select("date", "shares", "dividends_per_share", "dividends")
-        .to_dicts()
     )
 
     min_date = dividends['date'].min()
@@ -267,7 +266,7 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
         "ticker": request.ticker,
         "start": min_date,
         "end": max_date,
-        "dividends": dividends,
+        "dividends": dividends.to_dicts(),
     }
 
     return result
