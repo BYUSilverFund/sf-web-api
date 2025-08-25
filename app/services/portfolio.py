@@ -78,7 +78,7 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
 
     model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
 
-    alpha = model.params["Intercept"].item() * 252
+    alpha = model.params["Intercept"].item() * 252 * 100
     beta = model.params["return_bmk"].item()
 
     n_days = len(stk['date'].unique())
