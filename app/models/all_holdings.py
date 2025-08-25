@@ -16,10 +16,16 @@ class AllHoldingsRequest(BaseModel):
 class AllHoldingsRecord(BaseModel):
     ticker: str
     active: bool
+    shares: int
+    price: float
     value: float
     total_return: float
     volatility: float
     dividends: float
+    dividends_per_share: float
+    dividend_yield: float
+    alpha: float
+    beta: float
 
 
 class AllHoldingsSummaryResponse(BaseModel):

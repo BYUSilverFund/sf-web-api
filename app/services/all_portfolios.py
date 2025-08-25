@@ -1,4 +1,5 @@
 import polars as pl
+import polars_ols as pls
 from app.db import engine
 from app.models.all_portfolios import AllPortfoliosRequest
 
@@ -40,6 +41,18 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         )
     )
 
+    bmk = pl.read_database(
+        query=f"""
+                SELECT 
+                    date,
+                    return
+                FROM benchmark_new
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+        connection=engine,
+    ).select("date", pl.col("return").cast(pl.Float64))
+
     rf = pl.read_database(
         query=f"""
                 SELECT * 
@@ -55,19 +68,48 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
     total_return_rf = rf['cummulative_return'].tail(1).item() * 100
 
     portfolios = (
-        stk.sort("date")
+        stk
+        .join(rf, on='date', how='left', suffix='_rf')
+        .join(bmk, on='date', how='left', suffix='_bmk')
+        .with_columns(
+            pl.col('return').sub('return_rf').alias('xs_return'),
+            pl.col('return_bmk').sub('return_rf').alias('xs_return_bmk'),
+            pl.col('return').sub(pl.col('return_bmk')).alias('active_return')
+        )
+        .sort("date")
         .group_by("portfolio")
         .agg(
             pl.col("value").last(),
             pl.col("cummulative_return").last().alias("total_return"),
             pl.col("return").std().mul(pl.lit(252).sqrt()).alias("volatility"),
             pl.col("dividends").sum(),
+            pl.col('active_return').std().mul(pl.lit(252).sqrt()).alias('tracking_error'),
+            pl.col("xs_return").least_squares.ols(pl.col('xs_return_bmk'), mode='coefficients', add_intercept=True)
+        )
+        .unnest('coefficients')
+        .rename({'xs_return_bmk': 'beta', 'const': 'alpha'})
+        .with_columns(
+            pl.col('alpha').mul(252)
         )
         .with_columns(
             pl.col("total_return").sub(total_return_rf).truediv("volatility").alias("sharpe_ratio"),
             pl.col("dividends").truediv("value").alias("dividend_yield"),
+            pl.col('alpha').truediv('tracking_error').alias('information_ratio')
         )
-        .with_columns(pl.col("total_return", "volatility", "dividend_yield").mul(100))
+        .with_columns(pl.col("total_return", "volatility", "dividend_yield", "alpha").mul(100))
+        .select(
+            'portfolio',
+            'value',
+            'total_return',
+            'volatility',
+            'sharpe_ratio',
+            'dividends',
+            'dividend_yield',
+            'alpha',
+            'beta',
+            'tracking_error',
+            'information_ratio'
+        )
         .sort("portfolio")
         .to_dicts()
     )

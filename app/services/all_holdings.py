@@ -1,6 +1,7 @@
 import polars as pl
 from app.db import engine
 from app.models.all_holdings import AllHoldingsRequest
+import polars_ols as pls
 
 def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
     account_map = {
@@ -48,29 +49,76 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         )
     )
 
+    bmk = pl.read_database(
+        query=f"""
+                SELECT 
+                    date,
+                    return
+                FROM benchmark_new
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+        connection=engine,
+    ).select("date", pl.col("return").cast(pl.Float64))
+
+    rf = pl.read_database(
+        query=f"""
+                SELECT * 
+                FROM risk_free_rate_new
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+        connection=engine,
+    ).with_columns(pl.col("return").cast(pl.Float64)).sort('date')
+
     holdings = (
-        stk.group_by("ticker")
+        stk
+        .join(rf, on='date', how='left', suffix="_rf")
+        .join(bmk, on='date', how='left', suffix='_bmk')
+        .with_columns(
+            pl.col('return').sub('return_rf').alias('xs_return'),
+            pl.col('return_bmk').sub('return_rf').alias('xs_return_bmk')
+        )
+        .group_by("ticker")
         .agg(
             pl.col("date").max(),
+            pl.col("shares").last(),
+            pl.col("price").last(),
             pl.col("value").last(),
             pl.col("cummulative_return").last().alias("total_return"),
             pl.col("return").std().mul(pl.lit(252).sqrt()).alias("volatility"),
             pl.col("dividends_per_share").mul("shares").sum().alias("dividends"),
+            pl.col("dividends_per_share").sum(),
+            pl.col("xs_return").least_squares.ols(pl.col('xs_return_bmk'), mode='coefficients', add_intercept=True)
         )
+        .unnest('coefficients')
+        .rename({'xs_return_bmk': 'beta', 'const': 'alpha'})
         .with_columns(
             pl.col("volatility").fill_null(0),  # TODO: This was a quick fix -- Andrew
             pl.col("date").eq(request.end).alias("active"),
         )
         .with_columns(
-            pl.col('total_return', 'volatility').mul(100)
+            pl.col('dividends').truediv('value').alias('dividend_yield')
+        )
+        .with_columns(
+            pl.col('alpha').mul(252),
+        )
+        .with_columns(
+            pl.col('total_return', 'volatility', 'dividend_yield', 'alpha').mul(100)
         )
         .select(
             'ticker',
             'active',
+            'shares',
+            'price',
             'value',
             'total_return',
             'volatility',
-            'dividends'
+            'dividends',
+            'dividends_per_share',
+            'dividend_yield',
+            'alpha', 
+            'beta'
         )
         .sort("value", descending=True)
         .to_dicts()

@@ -14,10 +14,14 @@ class AllPortfoliosRecord(BaseModel):
     portfolio: str
     value: float
     total_return: float
-    sharpe_ratio: float
     volatility: float
+    sharpe_ratio: float
     dividends: float
     dividend_yield: float
+    alpha: float
+    beta: float
+    tracking_error: float
+    information_ratio: float
 
 
 class AllPortfoliosSummaryResponse(BaseModel):
