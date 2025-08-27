@@ -14,10 +14,10 @@ jobs:
     env:
       AWS_REGION: "us-west-2"
       DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
-      DB_PORT: ${{ secrets.DB_PORT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_PORT: ${{ secrets.DB_PORT }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,13 +54,16 @@ jobs:
         run: |
           zip -r app.zip . -x "*.git*" "*.venv*" "__pycache__/*"
 
+      - name: Upload to S3
+        run: |
+          aws s3 cp app.zip s3://${{ secrets.EB_S3_BUCKET }}/app-${{ github.sha }}.zip
+
       - name: Deploy to Elastic Beanstalk
         run: |
           aws elasticbeanstalk create-application-version \
             --application-name ${{ secrets.EB_APP_NAME }} \
             --version-label ${{ github.sha }} \
             --source-bundle S3Bucket=${{ secrets.EB_S3_BUCKET }},S3Key=app-${{ github.sha }}.zip
-          aws s3 cp app.zip s3://${{ secrets.EB_S3_BUCKET }}/app-${{ github.sha }}.zip
           aws elasticbeanstalk update-environment \
             --environment-name ${{ secrets.EB_ENV_NAME }} \
             --version-label ${{ github.sha }}
