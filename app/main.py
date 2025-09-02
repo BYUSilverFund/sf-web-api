@@ -28,7 +28,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",  # Next.js dev server
-        "https://main.d296w26r2ifyvl.amplifyapp.com/performance",
+        "https://main.d296w26r2ifyvl.amplifyapp.com",
         "https://silverfund.byu.edu"
         # Add production frontend URLs here, e.g. "https://yourdomain.com"
     ],
