@@ -26,10 +26,15 @@ app.include_router(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js dev server
+    allow_origins=[
+        "http://localhost:3000",  # Next.js dev server
+        "https://main.d296w26r2ifyvl.amplifyapp.com/performance",
+        "https://silverfund.byu.edu"
+        # Add production frontend URLs here, e.g. "https://yourdomain.com"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Restrict to necessary methods
+    allow_headers=["Authorization", "Content-Type"],  # Restrict to necessary headers
 )
 
 # Health check endpoint
