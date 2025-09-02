@@ -98,7 +98,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         .rename({'xs_return_bmk': 'beta', 'const': 'alpha'})
         .with_columns(
             pl.col("volatility").fill_null(0),  # TODO: This was a quick fix -- Andrew
-            pl.col("date").eq(request.end).alias("active"),
+            pl.col("date").eq(pl.col('date').max()).alias("active"), # TODO: This was another quick 
         )
         .with_columns(
             pl.col('dividends').truediv('value').alias('dividend_yield')
