@@ -71,6 +71,15 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         connection=engine,
     ).with_columns(pl.col("return").cast(pl.Float64)).sort('date')
 
+    max_date = pl.read_database(
+        query=f"""
+                SELECT MAX(date)
+                FROM holding_returns
+                WHERE date BETWEEN '{request.start}' AND '{request.end}';
+            """,
+        connection=engine,
+    )['max'].item()
+
     holdings = (
         stk
         .join(rf, on='date', how='left', suffix="_rf")
@@ -82,14 +91,22 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             pl.col('return').sub('return_rf').alias('xs_return'),
             pl.col('return_bmk').sub('return_rf').alias('xs_return_bmk')
         )
+        .sort('ticker', 'date')
+        .with_columns(
+            pl.col('return_rf').add(1).cum_prod().sub(1).over('ticker').alias('cummulative_return_rf'),
+            pl.col('return_bmk').add(1).cum_prod().sub(1).over('ticker').alias('cummulative_return_bmk'),
+        )
         .group_by("ticker")
         .agg(
             pl.col("date").max(),
+            pl.col('date').n_unique().alias("n_days"),
             pl.col("shares").last(),
             pl.col("price").last(),
             pl.col("value").last(),
             pl.col("cummulative_return").last().alias("total_return"),
-            pl.col("return").std().mul(pl.lit(252).sqrt()).alias("volatility"),
+            pl.col('cummulative_return_rf').last().alias('total_return_rf'),
+            pl.col("cummulative_return_bmk").last().alias('total_return_bmk'),
+            pl.col("return").std().alias("volatility"),
             pl.col("dividends_per_share").mul("shares").sum().alias("dividends"),
             pl.col("dividends_per_share").sum(),
             pl.col("xs_return").least_squares.ols(pl.col('xs_return_bmk'), mode='coefficients', add_intercept=True)
@@ -97,14 +114,17 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         .unnest('coefficients')
         .rename({'xs_return_bmk': 'beta', 'const': 'alpha'})
         .with_columns(
-            pl.col("volatility").fill_null(0),  # TODO: This was a quick fix -- Andrew
-            pl.col("date").eq(pl.col('date').max()).alias("active"), # TODO: This was another quick 
+            ((pl.col('total_return') - pl.col('total_return_rf') - pl.col('beta') * (pl.col('total_return_bmk') - pl.col('total_return_rf')))).alias('alpha')
         )
         .with_columns(
             pl.col('dividends').truediv('value').alias('dividend_yield')
         )
         .with_columns(
-            pl.col('alpha').mul(252),
+            pl.col("volatility").fill_null(0),  # TODO: This was a quick fix -- Andrew
+            pl.col("date").eq(max_date).alias("active"),
+        )
+        .with_columns(
+            pl.col('volatility').mul(pl.col('n_days').sqrt())
         )
         .with_columns(
             pl.col('total_return', 'volatility', 'dividend_yield', 'alpha').mul(100)
