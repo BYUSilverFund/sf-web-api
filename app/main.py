@@ -30,13 +30,14 @@ app.add_middleware(
         "http://localhost:3000",  # Next.js dev server
         "https://main.d296w26r2ifyvl.amplifyapp.com",
         "https://silverfund.byu.edu",
-        "https://www.silverfund.byu.edu"
+        "https://www.silverfund.byu.edu",
         # Add production frontend URLs here, e.g. "https://yourdomain.com"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE"],  # Restrict to necessary methods
     allow_headers=["Authorization", "Content-Type"],  # Restrict to necessary headers
 )
+
 
 # Health check endpoint
 @app.get("/health", tags=["Health"])
