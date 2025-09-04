@@ -31,19 +31,24 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
         )
     )
 
-    rf = pl.read_database(
-        query=f"""
+    print(bmk)
+
+    rf = (
+        pl.read_database(
+            query=f"""
                 SELECT * 
                 FROM risk_free_rate_new
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
-        connection=engine,
-    ).with_columns(pl.col("return").cast(pl.Float64)).sort('date')
+            connection=engine,
+        )
+        .with_columns(pl.col("return").cast(pl.Float64))
+        .sort("date")
+    )
 
     df_wide = (
-        bmk
-        .join(rf, on=["date"], suffix="_rf", how="left")
+        bmk.join(rf, on=["date"], suffix="_rf", how="left")
         .select(
             "date",
             "adjusted_close",
@@ -53,26 +58,30 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
             pl.col("return_rf").fill_null(strategy="forward"),  # Fill last value
         )
         .with_columns(
-            pl.col('return_rf').add(1).cum_prod().sub(1).alias('cummulative_return_rf')
+            pl.col("return_rf").add(1).cum_prod().sub(1).alias("cummulative_return_rf"),
         )
         .sort("date")
     )
 
-    n_days = len(df_wide['date'].unique())
+    n_days = len(df_wide["date"].unique())
 
-    total_return_rf = df_wide['cummulative_return_rf'].last() * 100
+    total_return_rf = df_wide["cummulative_return_rf"].last() * 100
     total_return_rf_annualized = total_return_rf * 252 / n_days
 
-    adjusted_close = df_wide["adjusted_close"].last()
     total_return = df_wide["cummulative_return"].last() * 100
     total_return_annualized = total_return * 252 / n_days
-    volatility = df_wide["return"].std() * (252**0.5) * 100
+
+    adjusted_close = df_wide["adjusted_close"].last()
+    volatility = df_wide["return"].std() * (n_days**0.5) * 100
+    volatility_annualized = df_wide["return"].std() * (252**0.5) * 100
     dividends_per_share = df_wide["dividends_per_share"].sum()
     dividend_yield = dividends_per_share / adjusted_close * 100
-    sharpe_ratio = (total_return_annualized - total_return_rf_annualized) / volatility
+    sharpe_ratio = (
+        total_return_annualized - total_return_rf_annualized
+    ) / volatility_annualized
 
-    min_date = bmk['date'].min()
-    max_date = bmk['date'].max()
+    min_date = bmk["date"].min()
+    max_date = bmk["date"].max()
 
     result = {
         "start": min_date,
@@ -132,8 +141,8 @@ def get_benchmark_time_series(request: BenchmarkRequest) -> dict[str, any]:
         .to_dicts()
     )
 
-    min_date = bmk['date'].min()
-    max_date = bmk['date'].max()
+    min_date = bmk["date"].min()
+    max_date = bmk["date"].max()
 
     result = {
         "start": min_date,
