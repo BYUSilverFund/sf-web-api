@@ -84,13 +84,12 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         )
         .group_by("ticker")
         .agg(
-            pl.col('date').n_unique().alias('n_days'),
             pl.col("date").max(),
             pl.col("shares").last(),
             pl.col("price").last(),
             pl.col("value").last(),
             pl.col("cummulative_return").last().alias("total_return"),
-            pl.col("return").std().alias("volatility"),
+            pl.col("return").std().mul(pl.lit(252).sqrt()).alias("volatility"),
             pl.col("dividends_per_share").mul("shares").sum().alias("dividends"),
             pl.col("dividends_per_share").sum(),
             pl.col("xs_return").least_squares.ols(pl.col('xs_return_bmk'), mode='coefficients', add_intercept=True)
@@ -99,8 +98,13 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         .rename({'xs_return_bmk': 'beta', 'const': 'alpha'})
         .with_columns(
             pl.col("volatility").fill_null(0),  # TODO: This was a quick fix -- Andrew
-            pl.col("date").eq(pl.col('date').max()).alias("active"),
+            pl.col("date").eq(pl.col('date').max()).alias("active"), # TODO: This was another quick 
+        )
+        .with_columns(
             pl.col('dividends').truediv('value').alias('dividend_yield')
+        )
+        .with_columns(
+            pl.col('alpha').mul(252),
         )
         .with_columns(
             pl.col('total_return', 'volatility', 'dividend_yield', 'alpha').mul(100)
@@ -117,20 +121,11 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             'dividends_per_share',
             'dividend_yield',
             'alpha', 
-            'beta',
-            'n_days',
+            'beta'
         )
         .sort("value", descending=True)
+        .to_dicts()
     )
-
-    if request.annualized:
-        holdings = (
-            holdings.with_columns(
-                pl.col('volatility').mul(pl.lit(252).sqrt()),
-                pl.col('alpha').mul(252),
-                pl.col('dividends', 'dividends_per_share', 'dividend_yield', 'total_return').mul(252).truediv('n_days')
-            )
-        )
 
     min_date = stk['date'].min()
     max_date = stk['date'].max()
@@ -139,7 +134,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         "fund": request.fund,
         "start": min_date,
         "end": max_date,
-        "holdings": holdings.to_dicts(),
+        "holdings": holdings,
     }
 
     return result

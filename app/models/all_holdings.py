@@ -6,11 +6,10 @@ class AllHoldingsRequest(BaseModel):
     fund: str
     start: date
     end: date
-    annualized: bool
 
     class Config:
         json_schema_extra = {
-            "example": {"fund": "grad", "start": "2024-08-20", "end": "2025-08-20", "annualized": False}
+            "example": {"fund": "grad", "start": "2024-08-20", "end": "2025-08-20"}
         }
 
 
