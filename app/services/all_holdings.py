@@ -163,8 +163,6 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         .sort("value", descending=True)
     )
 
-    print(holdings.tail(10).glimpse())
-
     min_date = stk["date"].min()
     max_date = stk["date"].max()
 
