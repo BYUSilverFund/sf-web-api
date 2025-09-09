@@ -25,7 +25,7 @@ class HoldingSummaryResponse(BaseModel):
     start: date
     end: date
     active: bool
-    shares: int
+    shares: float
     price: float
     value: float
     total_return: float
@@ -41,7 +41,7 @@ class HoldingRecord(BaseModel):
     date: date
     weight: float
     price: float
-    shares: int
+    shares: float
     value: float
     return_: float
     cummulative_return: float
@@ -61,7 +61,7 @@ class HoldingTimeSeriesResponse(BaseModel):
 
 class DividendsRecord(BaseModel):
     date: date
-    shares: int
+    shares: float
     dividends_per_share: float
     dividends: float
 
@@ -77,7 +77,7 @@ class DividendsResponse(BaseModel):
 class TradesRecord(BaseModel):
     date: date
     type: str
-    shares: int
+    shares: float
     price: float
     value: float
 

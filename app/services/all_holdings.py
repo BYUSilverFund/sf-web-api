@@ -27,7 +27,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(
-            pl.col("return", "dividends_per_share", "value", "price").cast(pl.Float64)
+            pl.col("return", "dividends_per_share", "value", "price", "shares").cast(pl.Float64),
         )
         .sort("date", "ticker")
         .with_columns(
@@ -161,8 +161,9 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             "beta",
         )
         .sort("value", descending=True)
-        .to_dicts()
     )
+
+    print(holdings.tail(10).glimpse())
 
     min_date = stk["date"].min()
     max_date = stk["date"].max()
@@ -171,7 +172,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         "fund": request.fund,
         "start": min_date,
         "end": max_date,
-        "holdings": holdings,
+        "holdings": holdings.to_dicts(),
     }
 
     return result

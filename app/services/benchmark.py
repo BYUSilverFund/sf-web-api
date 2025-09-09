@@ -31,8 +31,6 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
         )
     )
 
-    print(bmk)
-
     rf = (
         pl.read_database(
             query=f"""
