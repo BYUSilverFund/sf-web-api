@@ -3,10 +3,12 @@ name: Deploy to AWS Elastic Beanstalk
 on:
   push:
     branches:
-      - main
+      - dev
+      - prod
 
 jobs:
   deploy:
+    environment: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
     runs-on: ubuntu-latest
     permissions:
       id-token: write
@@ -28,10 +30,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Test Credentials
-        run: |
-          aws sts get-caller-identity
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -56,14 +54,14 @@ jobs:
 
       - name: Upload to S3
         run: |
-          aws s3 cp app.zip s3://${{ secrets.EB_S3_BUCKET }}/app-${{ github.sha }}.zip
+          aws s3 cp app.zip s3://${{ env.EB_S3_BUCKET }}/app-${{ github.sha }}.zip
 
       - name: Deploy to Elastic Beanstalk
         run: |
           aws elasticbeanstalk create-application-version \
-            --application-name ${{ secrets.EB_APP_NAME }} \
+            --application-name ${{ env.EB_APP_NAME }} \
             --version-label ${{ github.sha }} \
-            --source-bundle S3Bucket=${{ secrets.EB_S3_BUCKET }},S3Key=app-${{ github.sha }}.zip
+            --source-bundle S3Bucket=${{ env.EB_S3_BUCKET }},S3Key=app-${{ github.sha }}.zip
           aws elasticbeanstalk update-environment \
-            --environment-name ${{ secrets.EB_ENV_NAME }} \
+            --environment-name ${{ env.EB_ENV_NAME }} \
             --version-label ${{ github.sha }}
