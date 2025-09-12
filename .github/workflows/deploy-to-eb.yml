@@ -14,7 +14,6 @@ jobs:
       id-token: write
       contents: read
     env:
-      AWS_REGION: "us-west-2"
       DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USER: ${{ secrets.DB_USER }}
