@@ -14,12 +14,17 @@ jobs:
       id-token: write
       contents: read
     env:
+      AWS_REGION: "us-west-2"
       DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_PORT: ${{ secrets.DB_PORT }}
     steps:
+      - name: Print Environment
+        run: |
+          echo "Deploying to environment: ${{ job.environment }}"
+
       - name: Checkout code
         uses: actions/checkout@v4
 
