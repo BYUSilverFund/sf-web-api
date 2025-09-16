@@ -5,6 +5,9 @@ on:
     branches:
       - dev
       - prod
+  pull_request:
+    branches:
+      - prod
 
 jobs:
   deploy:
@@ -60,16 +63,21 @@ jobs:
         run: |
           zip -r app.zip . -x "*.git*" "*.venv*" "__pycache__/*"
 
+      - name: Set Version Label
+        run: |
+          echo "VERSION_LABEL=$(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_ENV
+
       - name: Upload to S3
         run: |
-          aws s3 cp app.zip s3://${{ vars.EB_S3_BUCKET }}/app-${{ github.sha }}.zip
+          aws s3 cp app.zip s3://${{ vars.EB_S3_BUCKET }}/app-${{ env.VERSION_LABEL }}.zip
 
       - name: Deploy to Elastic Beanstalk
         run: |
           aws elasticbeanstalk create-application-version \
-            --application-name ${{ vars.EB_APP_NAME }} \
-            --version-label ${{ github.sha }} \
-            --source-bundle S3Bucket=${{ vars.EB_S3_BUCKET }},S3Key=app-${{ github.sha }}.zip
+            --application-name "${{ vars.EB_APP_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle S3Bucket="${{ vars.EB_S3_BUCKET }}",S3Key="app-${{ env.VERSION_LABEL }}.zip"
           aws elasticbeanstalk update-environment \
-            --environment-name ${{ vars.EB_ENV_NAME }} \
-            --version-label ${{ github.sha }}
+            --application-name "${{ vars.EB_APP_NAME }}" \
+            --environment-name "${{ vars.EB_ENV_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
