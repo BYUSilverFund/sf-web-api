@@ -1,5 +1,9 @@
 from pydantic import BaseModel
 
 
-class CovarianceMatrixRequest(BaseModel):
+class TickersList(BaseModel):
     tickers: list[str]
+
+
+class Fund(BaseModel):
+    fund: str
