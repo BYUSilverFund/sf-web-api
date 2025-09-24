@@ -27,7 +27,9 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(
-            pl.col("return", "dividends_per_share", "value", "price", "shares").cast(pl.Float64),
+            pl.col("return", "dividends_per_share", "value", "price", "shares").cast(
+                pl.Float64
+            ),
         )
         .sort("date", "ticker")
         .with_columns(

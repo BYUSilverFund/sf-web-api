@@ -7,6 +7,7 @@ from app.routers import (
     top_positions,
     all_portfolios,
     all_holdings,
+    covariance_matrix,
 )
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,6 +23,9 @@ app.include_router(fund.router, prefix="/fund", tags=["Fund"])
 app.include_router(benchmark.router, prefix="/benchmark", tags=["Benchmark"])
 app.include_router(
     top_positions.router, prefix="/top-positions", tags=["Top Positions"]
+)
+app.include_router(
+    covariance_matrix.router, prefix="/covariance-matrix", tags=["Covariance Matrix"]
 )
 
 app.add_middleware(

@@ -28,9 +28,9 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(
-            pl.col("return", "dividends", "dividends_per_share", "price", "shares").cast(
-                pl.Float64
-            )
+            pl.col(
+                "return", "dividends", "dividends_per_share", "price", "shares"
+            ).cast(pl.Float64)
         )
         .sort("date", "ticker")
         .with_columns(
@@ -176,7 +176,13 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
         )
         .with_columns(
             pl.col(
-                "weight", "price", "value", "return", "dividends", "dividends_per_share", "shares"
+                "weight",
+                "price",
+                "value",
+                "return",
+                "dividends",
+                "dividends_per_share",
+                "shares",
             ).cast(pl.Float64),
         )
         .sort("date", "ticker")
