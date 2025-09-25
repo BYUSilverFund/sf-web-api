@@ -6,23 +6,26 @@ from app.db import engine
 
 def get_covariance_matrix(tickers: TickersList) -> pl.DataFrame:
     return (
-        s3.get_parquet(
+        s3.scan_parquet(
             bucket_name="barra-covariance-matrices",
             file_key="latest.parquet",
         )
         .filter(pl.col("ticker").is_in(tickers.tickers))
         .sort("ticker")
         .select("date", "ticker", *sorted(tickers.tickers))
+        .collect()
     )
 
 
 def get_tickers() -> list[str]:
     return (
-        s3.get_parquet(
+        s3.scan_parquet(
             bucket_name="barra-covariance-matrices",
             file_key="latest.parquet",
-        )["ticker"]
-        .unique()
+        )
+        .select('ticker')
+        .collect()
+        ['ticker']
         .sort()
         .to_list()
     )

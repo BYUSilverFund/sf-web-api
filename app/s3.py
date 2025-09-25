@@ -25,6 +25,17 @@ def get_parquet(bucket_name: str, file_key: str) -> pl.DataFrame:
 
     return pl.read_parquet(BytesIO(file_content))
 
+def scan_parquet(bucket_name: str, file_key: str) -> pl.LazyFrame:
+    storage_options = {
+        "aws_access_key_id": aws_access_key_id,
+        "aws_secret_access_key": aws_secret_access_key,
+        "aws_region": region_name,
+    }
+
+    source = f"s3://{bucket_name}/{file_key}"
+
+    return pl.scan_parquet(source, storage_options=storage_options)
+
 
 def list_files(bucket_name: str):
     file_paths = []
