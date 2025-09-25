@@ -7,3 +7,4 @@ statsmodels
 python-dotenv
 uvicorn
 psycopg2-binary
+boto3

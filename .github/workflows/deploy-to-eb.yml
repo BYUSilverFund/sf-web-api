@@ -5,11 +5,14 @@ on:
     branches:
       - dev
       - prod
+  pull_request:
+    branches:
+      - prod
 
 jobs:
   deploy:
-    environment: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
     runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
     permissions:
       id-token: write
       contents: read
@@ -20,6 +23,7 @@ jobs:
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_PORT: ${{ secrets.DB_PORT }}
+      JOB_ENV: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
     steps:
       - name: Print Environment
         run: |
@@ -31,9 +35,12 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          # vars. pulls from environment variables, set in GitHub Settings Environments
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ vars.AWS_REGION }}
+          audience: sts.amazonaws.com
+          output-env-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -56,16 +63,21 @@ jobs:
         run: |
           zip -r app.zip . -x "*.git*" "*.venv*" "__pycache__/*"
 
+      - name: Set Version Label
+        run: |
+          echo "VERSION_LABEL=$(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_ENV
+
       - name: Upload to S3
         run: |
-          aws s3 cp app.zip s3://${{ env.EB_S3_BUCKET }}/app-${{ github.sha }}.zip
+          aws s3 cp app.zip s3://${{ vars.EB_S3_BUCKET }}/app-${{ env.VERSION_LABEL }}.zip
 
       - name: Deploy to Elastic Beanstalk
         run: |
           aws elasticbeanstalk create-application-version \
-            --application-name ${{ env.EB_APP_NAME }} \
-            --version-label ${{ github.sha }} \
-            --source-bundle S3Bucket=${{ env.EB_S3_BUCKET }},S3Key=app-${{ github.sha }}.zip
+            --application-name "${{ vars.EB_APP_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle S3Bucket="${{ vars.EB_S3_BUCKET }}",S3Key="app-${{ env.VERSION_LABEL }}.zip"
           aws elasticbeanstalk update-environment \
-            --environment-name ${{ env.EB_ENV_NAME }} \
-            --version-label ${{ github.sha }}
+            --application-name "${{ vars.EB_APP_NAME }}" \
+            --environment-name "${{ vars.EB_ENV_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
