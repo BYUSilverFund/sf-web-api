@@ -5,14 +5,18 @@ from app.db import engine
 
 
 def get_covariance_matrix(tickers: TickersList) -> pl.DataFrame:
+    # Sort tickers with IWV last
+    sorted_tickers = sorted([t for t in tickers.tickers if t != "IWV"])
+    sorted_tickers.append("IWV") # Include IWV even if it wasn't requested.
+
     return (
         s3.scan_parquet(
             bucket_name="barra-covariance-matrices",
             file_key="latest.parquet",
         )
-        .filter(pl.col("ticker").is_in(tickers.tickers))
-        .sort("ticker")
-        .select("date", "ticker", *sorted(tickers.tickers))
+        .filter(pl.col("ticker").is_in(sorted_tickers))
+        .select("date", "ticker", *sorted_tickers)
+        .sort(by=pl.col("ticker").replace({"IWV": "zzzIWV"}))
         .collect()
     )
 
@@ -23,9 +27,8 @@ def get_tickers() -> list[str]:
             bucket_name="barra-covariance-matrices",
             file_key="latest.parquet",
         )
-        .select('ticker')
-        .collect()
-        ['ticker']
+        .select("ticker")
+        .collect()["ticker"]
         .sort()
         .to_list()
     )
