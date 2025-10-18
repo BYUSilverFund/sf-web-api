@@ -1,6 +1,7 @@
 import polars as pl
-from app.db import engine
 import statsmodels.formula.api as smf
+
+from app.db import engine
 from app.models.fund import FundRequest
 
 

@@ -1,9 +1,11 @@
 from fastapi import APIRouter
-from app.services.all_holdings import get_all_holdings_summary
+
 from app.models.all_holdings import (
     AllHoldingsRequest,
     AllHoldingsSummaryResponse,
 )
+from app.services.all_holdings import get_all_holdings_summary
+
 
 router = APIRouter()
 
