@@ -1,10 +1,12 @@
 from fastapi import APIRouter
-from app.services.benchmark import get_benchmark_summary, get_benchmark_time_series
+
 from app.models.benchmark import (
     BenchmarkRequest,
     BenchmarkSummaryResponse,
     BenchmarkTimeSeriesResponse,
 )
+from app.services.benchmark import get_benchmark_summary, get_benchmark_time_series
+
 
 router = APIRouter()
 

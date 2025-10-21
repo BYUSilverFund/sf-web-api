@@ -1,4 +1,5 @@
 import polars as pl
+
 from app.db import engine
 from app.models.top_positions import TopPositionsRequest
 

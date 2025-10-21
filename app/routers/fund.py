@@ -1,10 +1,12 @@
 from fastapi import APIRouter
-from app.services.fund import get_fund_summary, get_fund_time_series
+
 from app.models.fund import (
     FundRequest,
     FundSummaryResponse,
     FundTimeSeriesResponse,
 )
+from app.services.fund import get_fund_summary, get_fund_time_series
+
 
 router = APIRouter()
 

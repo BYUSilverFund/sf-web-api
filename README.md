@@ -1,4 +1,5 @@
 # Silver Fund Web API
+
 Web API written in Python FastAPI for use with the Silver Fund dashboard.
 
 ## Setup
@@ -10,6 +11,7 @@ python -m venv .venv
 ```
 
 Activate virtual environment
+
 ```bash
 source .venv/bin/activate
 ```
@@ -18,6 +20,7 @@ Install dependencies
 
 ```bash
 pip install -r requirements.txt
+pip install -r requirements-dev.txt  # For development tools
 ```
 
 ## Development
@@ -29,3 +32,41 @@ uvicorn app.main:app --reload
 ```
 
 Navigate to [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+## Code Quality
+
+We use **Ruff** for both linting and formatting (replaces Black + Flake8 + isort).
+
+### Format Code
+
+Format all Python files:
+
+```bash
+ruff format .
+```
+
+Check formatting without making changes:
+
+```bash
+ruff format --check .
+```
+
+### Lint Code
+
+Run linter:
+
+```bash
+ruff check .
+```
+
+Auto-fix linting issues:
+
+```bash
+ruff check --fix .
+```
+
+### Run Both (Recommended)
+
+```bash
+ruff check --fix . && ruff format .
+```
