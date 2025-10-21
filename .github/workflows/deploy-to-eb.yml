@@ -5,6 +5,8 @@ on:
     branches:
       - dev
       - prod
+    paths-ignore:
+      - "README.md"
 
 jobs:
   deploy:

@@ -31,24 +31,24 @@ Run the FastAPI app
 uvicorn app.main:app --reload
 ```
 
-Navigate to [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+API routes are listed at to [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ## Code Quality
 
-We use **Ruff** for both linting and formatting (replaces Black + Flake8 + isort).
+We use **Ruff** for both linting and formatting. Make sure to lint and format before pushing to Github. Github Actions is set up to fail ruff fails.
 
 ### Format Code
 
 Format all Python files:
 
 ```bash
-ruff format .
+ruff format
 ```
 
 Check formatting without making changes:
 
 ```bash
-ruff format --check .
+ruff format --check
 ```
 
 ### Lint Code
@@ -56,17 +56,11 @@ ruff format --check .
 Run linter:
 
 ```bash
-ruff check .
+ruff check
 ```
 
 Auto-fix linting issues:
 
 ```bash
-ruff check --fix .
-```
-
-### Run Both (Recommended)
-
-```bash
-ruff check --fix . && ruff format .
+ruff check --fix
 ```
