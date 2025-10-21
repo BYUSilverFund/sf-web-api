@@ -1,6 +1,8 @@
 from fastapi import APIRouter
-from app.services.top_positions import get_top_positions
+
 from app.models.top_positions import TopPositionsRequest, TopPositionsResponse
+from app.services.top_positions import get_top_positions
+
 
 router = APIRouter()
 

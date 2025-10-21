@@ -1,13 +1,14 @@
 import polars as pl
+
 from app import s3
-from app.models.covariance_matrix import TickersList, Fund
 from app.db import engine
+from app.models.covariance_matrix import Fund, TickersList
 
 
 def get_covariance_matrix(tickers: TickersList) -> pl.DataFrame:
     # Sort tickers with IWV last
     sorted_tickers = sorted([t for t in tickers.tickers if t != "IWV"])
-    sorted_tickers.append("IWV") # Include IWV even if it wasn't requested.
+    sorted_tickers.append("IWV")  # Include IWV even if it wasn't requested.
 
     return (
         s3.scan_parquet(

@@ -1,9 +1,11 @@
 from fastapi import APIRouter
-from app.services.all_portfolios import get_all_portfolios_summary
+
 from app.models.all_portfolios import (
     AllPortfoliosRequest,
     AllPortfoliosSummaryResponse,
 )
+from app.services.all_portfolios import get_all_portfolios_summary
+
 
 router = APIRouter()
 

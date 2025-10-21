@@ -1,8 +1,10 @@
+import os
+from io import BytesIO
+
 import boto3
 import polars as pl
-from io import BytesIO
 from dotenv import load_dotenv
-import os
+
 
 load_dotenv(override=True)
 
@@ -24,6 +26,7 @@ def get_parquet(bucket_name: str, file_key: str) -> pl.DataFrame:
     file_content = s3_object["Body"].read()
 
     return pl.read_parquet(BytesIO(file_content))
+
 
 def scan_parquet(bucket_name: str, file_key: str) -> pl.LazyFrame:
     storage_options = {

@@ -1,10 +1,12 @@
 from fastapi import APIRouter
-from app.services.portfolio import get_portfolio_summary, get_portfolio_time_series
+
 from app.models.portfolio import (
     PortfolioRequest,
     PortfolioSummaryResponse,
     PortfolioTimeSeriesResponse,
 )
+from app.services.portfolio import get_portfolio_summary, get_portfolio_time_series
+
 
 router = APIRouter()
 
