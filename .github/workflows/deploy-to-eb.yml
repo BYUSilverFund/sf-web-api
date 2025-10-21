@@ -5,9 +5,6 @@ on:
     branches:
       - dev
       - prod
-  pull_request:
-    branches:
-      - prod
 
 jobs:
   deploy:
