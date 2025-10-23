@@ -1,6 +1,12 @@
-name: Deploy to AWS Elastic Beanstalk
+name: Lint and Deploy to Elastic Beanstalk
 
 on:
+  pull_request:
+    branches:
+      - dev
+      - prod
+    paths-ignore:
+      - "README.md"
   push:
     branches:
       - dev
@@ -8,8 +14,35 @@ on:
     paths-ignore:
       - "README.md"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements-dev.txt
+
+      - name: Run Ruff linter
+        run: |
+          ruff check .
+
+      - name: Check formatting with Ruff
+        run: |
+          ruff format --check .
   deploy:
+    needs: lint-and-format
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
     permissions:
@@ -22,7 +55,7 @@ jobs:
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_PORT: ${{ secrets.DB_PORT }}
-      JOB_ENV: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
+
     steps:
       - name: Print Environment
         run: |

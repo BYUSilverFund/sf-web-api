@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -32,16 +34,10 @@ app.include_router(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # Next.js dev server
-        "https://main.d296w26r2ifyvl.amplifyapp.com",
-        "https://silverfund.byu.edu",
-        "https://www.silverfund.byu.edu",
-        # Add production frontend URLs here, e.g. "https://yourdomain.com"
-    ],
+    allow_origins=os.getenv("CORS_ACCESS_LIST_CSV", "").split(","),
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],  # Restrict to necessary methods
-    allow_headers=["Authorization", "Content-Type"],  # Restrict to necessary headers
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 
