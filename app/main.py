@@ -1,15 +1,17 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
 from app.routers import (
+    all_holdings,
+    all_portfolios,
+    benchmark,
+    covariance_matrix,
     fund,
     holding,
-    benchmark,
     portfolio,
     top_positions,
-    all_portfolios,
-    all_holdings,
-    covariance_matrix,
 )
-from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="Silver Fund API")
 

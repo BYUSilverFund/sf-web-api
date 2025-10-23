@@ -1,7 +1,8 @@
 import polars as pl
+import polars_ols as pls  # noqa: F401
+
 from app.db import engine
 from app.models.all_holdings import AllHoldingsRequest
-import polars_ols as pls  # noqa: F401
 
 
 def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:

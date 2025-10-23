@@ -1,12 +1,15 @@
+import io
+
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from app.models.covariance_matrix import TickersList, Fund
+
+from app.models.covariance_matrix import Fund, TickersList
 from app.services.covariance_matrix import (
     get_covariance_matrix,
-    get_tickers,
     get_fund_tickers,
+    get_tickers,
 )
-import io
+
 
 router = APIRouter()
 
