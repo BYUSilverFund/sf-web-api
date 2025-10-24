@@ -16,9 +16,10 @@ on:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
-  
+
 jobs:
   lint-and-format:
+    if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -42,6 +43,7 @@ jobs:
           ruff format --check .
   deploy:
     needs: lint-and-format
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/prod') }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
     permissions:
