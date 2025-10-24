@@ -11,6 +11,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         "quant": "U12702120",
         "brigham_capital": "U10797691",
         "grad": "U12702064",
+        "quant_paper": "DU8843649"
     }
 
     client_account_id = account_map[request.fund]
@@ -158,6 +159,7 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
         "quant": "U12702120",
         "brigham_capital": "U10797691",
         "grad": "U12702064",
+        "quant_paper": "DU8843649"
     }
 
     client_account_id = account_map[request.fund]
@@ -271,6 +273,7 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
         "quant": "U12702120",
         "brigham_capital": "U10797691",
         "grad": "U12702064",
+        "quant_paper": "DU8843649"
     }
 
     client_account_id = account_map[request.fund]
@@ -314,6 +317,7 @@ def get_trades(request: HoldingRequest) -> dict[str, any]:
         "quant": "U12702120",
         "brigham_capital": "U10797691",
         "grad": "U12702064",
+        "quant_paper": "DU8843649"
     }
 
     client_account_id = account_map[request.fund]
