@@ -11,6 +11,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         "U12702120": "quant",
         "U10797691": "brigham_capital",
         "U12702064": "grad",
+        "DU8843649": "quant_paper"
     }
 
     stk = (
