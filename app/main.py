@@ -25,7 +25,6 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-# Register routers after middleware configured
 app.include_router(holding.router, prefix="/holding", tags=["Holding"])
 app.include_router(all_holdings.router, prefix="/all-holdings", tags=["All Holdings"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
