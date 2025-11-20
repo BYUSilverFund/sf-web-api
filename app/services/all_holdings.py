@@ -3,18 +3,11 @@ import polars_ols as pls  # noqa: F401
 
 from app.db import engine
 from app.models.all_holdings import AllHoldingsRequest
+from app.utils import get_account_id_from_name
 
 
 def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
-    account_map = {
-        "undergrad": "U4297056",
-        "quant": "U12702120",
-        "brigham_capital": "U10797691",
-        "grad": "U12702064",
-        "quant_paper": "DU8843649"
-    }
-
-    client_account_id = account_map[request.fund]
+    client_account_id = get_account_id_from_name(request.fund)
 
     stk = (
         pl.read_database(

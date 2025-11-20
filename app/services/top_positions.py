@@ -2,18 +2,10 @@ import polars as pl
 
 from app.db import engine
 from app.models.top_positions import TopPositionsRequest
-
+from app.utils import get_account_id_from_name
 
 def get_top_positions(request: TopPositionsRequest) -> dict[str, any]:
-    account_map = {
-        "undergrad": "U4297056",
-        "quant": "U12702120",
-        "brigham_capital": "U10797691",
-        "grad": "U12702064",
-        "quant_paper": "DU8843649"
-    }
-
-    client_account_id = account_map[request.fund]
+    client_account_id = get_account_id_from_name(request.fund)
 
     max_date = (
         pl.read_database(
