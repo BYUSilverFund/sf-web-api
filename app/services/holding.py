@@ -3,18 +3,11 @@ import statsmodels.formula.api as smf
 
 from app.db import engine
 from app.models.holding import HoldingRequest
+from app.utils import get_account_id_from_name
 
 
 def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
-    account_map = {
-        "undergrad": "U4297056",
-        "quant": "U12702120",
-        "brigham_capital": "U10797691",
-        "grad": "U12702064",
-        "quant_paper": "DU8843649"
-    }
-
-    client_account_id = account_map[request.fund]
+    client_account_id = get_account_id_from_name(request.fund)
 
     stk = (
         pl.read_database(
@@ -154,15 +147,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
 
 
 def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
-    account_map = {
-        "undergrad": "U4297056",
-        "quant": "U12702120",
-        "brigham_capital": "U10797691",
-        "grad": "U12702064",
-        "quant_paper": "DU8843649"
-    }
-
-    client_account_id = account_map[request.fund]
+    client_account_id = get_account_id_from_name(request.fund)
 
     stk = (
         pl.read_database(
@@ -268,15 +253,7 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
 
 
 def get_dividends(request: HoldingRequest) -> dict[str, any]:
-    account_map = {
-        "undergrad": "U4297056",
-        "quant": "U12702120",
-        "brigham_capital": "U10797691",
-        "grad": "U12702064",
-        "quant_paper": "DU8843649"
-    }
-
-    client_account_id = account_map[request.fund]
+    client_account_id = get_account_id_from_name(request.fund)
 
     dividends = (
         pl.read_database(
@@ -312,15 +289,7 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
 
 
 def get_trades(request: HoldingRequest) -> dict[str, any]:
-    account_map = {
-        "undergrad": "U4297056",
-        "quant": "U12702120",
-        "brigham_capital": "U10797691",
-        "grad": "U12702064",
-        "quant_paper": "DU8843649"
-    }
-
-    client_account_id = account_map[request.fund]
+    client_account_id = get_account_id_from_name(request.fund)
 
     trades = (
         pl.read_database(

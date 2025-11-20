@@ -3,16 +3,10 @@ import polars_ols as pls  # noqa: F401
 
 from app.db import engine
 from app.models.all_portfolios import AllPortfoliosRequest
-
+from app.utils import account_id_to_name
 
 def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
-    account_map = {
-        "U4297056": "undergrad",
-        "U12702120": "quant",
-        "U10797691": "brigham_capital",
-        "U12702064": "grad",
-        "DU8843649": "quant_paper"
-    }
+
 
     stk = (
         pl.read_database(
@@ -39,7 +33,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             .sub(1)
             .over("client_account_id")
             .alias("cummulative_return"),
-            pl.col("client_account_id").replace(account_map).alias("portfolio"),
+            pl.col("client_account_id").replace(account_id_to_name()).alias("portfolio"),
         )
         .select(
             "date", "portfolio", "value", "return", "cummulative_return", "dividends"

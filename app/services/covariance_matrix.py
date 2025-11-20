@@ -3,7 +3,7 @@ import polars as pl
 from app import s3
 from app.db import engine
 from app.models.covariance_matrix import Fund, TickersList
-
+from app.utils import get_account_id_from_name
 
 def get_covariance_matrix(tickers: TickersList) -> pl.DataFrame:
     # Sort tickers with IWV last
@@ -36,14 +36,7 @@ def get_tickers() -> list[str]:
 
 
 def get_fund_tickers(request: Fund) -> list[str]:
-    account_map = {
-        "undergrad": "U4297056",
-        "quant": "U12702120",
-        "brigham_capital": "U10797691",
-        "grad": "U12702064",
-    }
-
-    client_account_id = account_map[request.fund]
+    client_account_id = get_account_id_from_name(request.fund)
 
     return (
         pl.read_database(
