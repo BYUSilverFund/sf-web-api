@@ -5,6 +5,7 @@ from app.db import engine
 from app.models.covariance_matrix import Fund, TickersList
 from app.utils import get_account_id_from_name
 
+
 def get_covariance_matrix(tickers: TickersList) -> pl.DataFrame:
     # Sort tickers with IWV last
     sorted_tickers = sorted([t for t in tickers.tickers if t != "IWV"])

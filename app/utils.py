@@ -4,7 +4,7 @@ def account_id_to_name() -> dict:
         "U12702120": "quant",
         "U10797691": "brigham_capital",
         "U12702064": "grad",
-        "DU8843649": "quant_paper"
+        "DU8843649": "quant_paper",
     }
 
 
@@ -14,7 +14,7 @@ def get_account_id_from_name(name: str) -> str:
         "quant": "U12702120",
         "brigham_capital": "U10797691",
         "grad": "U12702064",
-        "quant_paper": "DU8843649"
+        "quant_paper": "DU8843649",
     }
 
     if name in account_map:
