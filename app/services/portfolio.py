@@ -5,6 +5,7 @@ from app.db import engine
 from app.models.portfolio import PortfolioRequest
 from app.utils import get_account_id_from_name
 
+
 def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
 

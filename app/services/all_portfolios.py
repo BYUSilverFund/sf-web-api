@@ -5,9 +5,8 @@ from app.db import engine
 from app.models.all_portfolios import AllPortfoliosRequest
 from app.utils import account_id_to_name
 
+
 def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
-
-
     stk = (
         pl.read_database(
             query=f"""
@@ -33,7 +32,9 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             .sub(1)
             .over("client_account_id")
             .alias("cummulative_return"),
-            pl.col("client_account_id").replace(account_id_to_name()).alias("portfolio"),
+            pl.col("client_account_id")
+            .replace(account_id_to_name())
+            .alias("portfolio"),
         )
         .select(
             "date", "portfolio", "value", "return", "cummulative_return", "dividends"

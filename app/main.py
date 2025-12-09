@@ -11,14 +11,16 @@ from app.routers import (
     fund,
     holding,
     portfolio,
-    top_positions,
     timeseries_performance_report,
+    top_positions,
 )
 
 
 app = FastAPI(title="Silver Fund API")
 
-app.include_router(timeseries_performance_report.router, prefix="/reports", tags=["Reports"])
+app.include_router(
+    timeseries_performance_report.router, prefix="/reports", tags=["Reports"]
+)
 app.include_router(holding.router, prefix="/holding", tags=["Holding"])
 app.include_router(all_holdings.router, prefix="/all-holdings", tags=["All Holdings"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])

@@ -4,6 +4,7 @@ from app.db import engine
 from app.models.top_positions import TopPositionsRequest
 from app.utils import get_account_id_from_name
 
+
 def get_top_positions(request: TopPositionsRequest) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
 
