@@ -4,10 +4,10 @@ from io import StringIO
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app.models.timeseries_performance_report import (
-    TimeSeriesPerformanceReportAllRequest,
+from app.models.download_data import (
+    DownloadDataAllPortfolioRequest,
 )
-from app.services.timeseries_performance_report import get_timeseries_performance
+from app.services.download_data import get_portfolio_performance
 
 
 router = APIRouter(tags=["Reports"])
@@ -19,10 +19,10 @@ router = APIRouter(tags=["Reports"])
     description="Returns fund-level performance time series over a user-specified date range.",
     response_description="CSV download containing the performance time series.",
 )
-def download_timeseries_performance_report_csv(
-    request: TimeSeriesPerformanceReportAllRequest,
+def download_portfolio_performance_csv(
+    request: DownloadDataAllPortfolioRequest,
 ):
-    result = get_timeseries_performance(request)
+    result = get_portfolio_performance(request)
 
     start_str = request.start.strftime("%Y-%m-%d")
     end_str = request.end.strftime("%Y-%m-%d")

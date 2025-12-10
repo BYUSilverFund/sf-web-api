@@ -3,7 +3,7 @@ from datetime import date
 from pydantic import BaseModel
 
 
-class TimeSeriesPerformanceReportAllRequest(BaseModel):
+class DownloadDataAllPortfolioRequest(BaseModel):
     start: date
     end: date
 
@@ -16,7 +16,7 @@ class TimeSeriesPerformanceReportAllRequest(BaseModel):
         }
 
 
-class TimeSeriesPerformanceReportAllRecord(BaseModel):
+class DownloadDataAllPortfolioRecord(BaseModel):
     date: date
     portfolio: str
     ticker: str
@@ -27,5 +27,5 @@ class TimeSeriesPerformanceReportAllRecord(BaseModel):
     return_rf: float
 
 
-class TimeSeriesPerformanceReportAllResponse(BaseModel):
-    records: list[TimeSeriesPerformanceReportAllRecord]
+class DownloadDataAllPortfolioResponse(BaseModel):
+    records: list[DownloadDataAllPortfolioRecord]

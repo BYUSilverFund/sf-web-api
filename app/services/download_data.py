@@ -2,14 +2,14 @@ import polars as pl
 import polars_ols as pls  # noqa: F401
 
 from app.db import engine
-from app.models.timeseries_performance_report import (
-    TimeSeriesPerformanceReportAllRequest,
+from app.models.download_data import (
+    DownloadDataAllPortfolioRequest,
 )
 from app.utils import account_id_to_name
 
 
-def get_timeseries_performance(
-    request: TimeSeriesPerformanceReportAllRequest,
+def get_portfolio_performance(
+    request: DownloadDataAllPortfolioRequest,
 ) -> dict[str, any]:
     # (Date, Profile, Value, Returns, Dividends) for each fund
     stk = (
