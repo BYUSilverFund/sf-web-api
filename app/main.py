@@ -8,6 +8,7 @@ from app.routers import (
     all_portfolios,
     benchmark,
     covariance_matrix,
+    download_data,
     fund,
     holding,
     portfolio,
@@ -17,6 +18,15 @@ from app.routers import (
 
 app = FastAPI(title="Silver Fund API")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=os.getenv("CORS_ACCESS_LIST_CSV", "").split(","),
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+app.include_router(download_data.router, prefix="/reports", tags=["Reports"])
 app.include_router(holding.router, prefix="/holding", tags=["Holding"])
 app.include_router(all_holdings.router, prefix="/all-holdings", tags=["All Holdings"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
@@ -30,14 +40,6 @@ app.include_router(
 )
 app.include_router(
     covariance_matrix.router, prefix="/covariance-matrix", tags=["Covariance Matrix"]
-)
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=os.getenv("CORS_ACCESS_LIST_CSV", "").split(","),
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["Authorization", "Content-Type"],
 )
 
 
