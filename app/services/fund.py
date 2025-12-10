@@ -93,7 +93,6 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
     alpha = (total_return - total_return_rf) - beta * (
         total_return_bmk - total_return_rf
     )
-    alpha_annualized = alpha * 252 / n_days
 
     value = stk["value"].last()
     volatility = stk["return"].std() * 100 * (n_days**0.5)
@@ -105,7 +104,7 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
     ) / volatility_annualized
     tracking_error = df_wide["return_active"].std() * 100 * (n_days**0.5)
     tracking_error_annualized = df_wide["return_active"].std() * 100 * (252**0.5)
-    information_ratio = alpha_annualized / tracking_error_annualized
+    information_ratio = alpha / tracking_error_annualized
 
     min_date = stk["date"].min()
     max_date = stk["date"].max()

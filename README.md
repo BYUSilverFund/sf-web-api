@@ -14,6 +14,7 @@ Activate virtual environment
 
 ```bash
 source .venv/bin/activate
+.venv\Scripts\Activate 
 ```
 
 Install dependencies
