@@ -64,30 +64,3 @@ Auto-fix linting issues:
 ```bash
 ruff check --fix
 ```
-
-
-## Pre-commit Hooks
-
-We use **pre-commit** to automatically run Ruff linting and formatting before every commit.
-
-### Setup (one-time)
-
-After installing dependencies, install pre-commit hooks:
-
-```bash
-pre-commit install
-```
-
-### Usage
-
-Hooks run automatically on `git commit`. You can also run manually:
-
-```bash
-# Run on all files
-pre-commit run --all-files
-
-# Run on staged files only
-pre-commit run
-
-# Update hook versions
-pre-commit autoupdate
