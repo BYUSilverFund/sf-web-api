@@ -96,7 +96,6 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     alpha = (total_return - total_return_rf) - beta * (
         total_return_bmk - total_return_rf
     )
-    alpha_annualized = alpha * 252 / n_days
 
     value = stk["value"].last()
     volatility = stk["return"].std() * (n_days**0.5) * 100
@@ -108,7 +107,7 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     ) / volatility_annualized
     tracking_error = df_wide["return_active"].std() * (n_days**0.5) * 100
     tracking_error_annualized = df_wide["return_active"].std() * (252**0.5) * 100
-    information_ratio = alpha_annualized / tracking_error_annualized
+    information_ratio = alpha / tracking_error_annualized
 
     min_date = stk["date"].min()
     max_date = stk["date"].max()

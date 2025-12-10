@@ -98,7 +98,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             pl.col("value").last(),
             pl.col("cummulative_return").last().alias("total_return"),
             pl.col("cummulative_return_rf").last().alias("total_return_rf"),
-            pl.col("cummulative_return").last().alias("total_return_bmk"),
+            pl.col("cummulative_return_bmk").last().alias("total_return_bmk"),
             pl.col("return").std().alias("volatility"),
             pl.col("dividends").sum(),
             pl.col("active_return").std().alias("tracking_error"),
@@ -116,7 +116,6 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             ).alias("alpha")
         )
         .with_columns(
-            pl.col("alpha").mul(252).truediv("n_days").alias("alpha_annualized"),
             pl.col("tracking_error").mul(pl.col("n_days").sqrt()),
             pl.col("tracking_error")
             .mul(pl.lit(252).sqrt())
@@ -138,7 +137,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             .truediv("volatility_annualized")
             .alias("sharpe_ratio"),
             pl.col("dividends").truediv("value").alias("dividend_yield"),
-            pl.col("alpha_annualized")
+            pl.col("alpha")
             .truediv("tracking_error_annualized")
             .alias("information_ratio"),
         )
