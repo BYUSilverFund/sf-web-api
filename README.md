@@ -14,6 +14,7 @@ Activate virtual environment
 
 ```bash
 source .venv/bin/activate
+.venv\Scripts\Activate 
 ```
 
 Install dependencies
@@ -21,6 +22,12 @@ Install dependencies
 ```bash
 pip install -r requirements.txt
 pip install -r requirements-dev.txt  # For development tools
+```
+
+Install pre-commit hooks
+
+```bash
+pre-commit install
 ```
 
 ## Development
@@ -63,4 +70,37 @@ Auto-fix linting issues:
 
 ```bash
 ruff check --fix
+```
+
+## Pre-commit Hooks
+
+We use **pre-commit** to automatically run Ruff linting and formatting before every commit.
+
+### Setup (one-time)
+
+After installing dependencies, install pre-commit hooks:
+
+```bash
+pre-commit install
+```
+
+### Usage
+
+Hooks run automatically on `git commit`. You can also run manually:
+
+```bash
+# Run on all files
+pre-commit run --all-files
+
+# Run on staged files only
+pre-commit run
+
+# Update hook versions
+pre-commit autoupdate
+```
+
+### Skip hooks (emergency only)
+
+```bash
+git commit --no-verify -m "emergency commit"
 ```
