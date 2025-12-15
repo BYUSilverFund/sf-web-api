@@ -1,10 +1,13 @@
+import io
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from app.models.all_portfolios import (
     AllPortfoliosRequest,
     AllPortfoliosSummaryResponse,
 )
-from app.services.all_portfolios import get_all_portfolios_summary
+from app.services.all_portfolios import get_all_portfolios_summary,get_all_portfolios_csv
 
 
 router = APIRouter()
@@ -22,3 +25,25 @@ def all_portfolios_summary(
     holding_request: AllPortfoliosRequest,
 ) -> AllPortfoliosSummaryResponse:
     return AllPortfoliosSummaryResponse(**get_all_portfolios_summary(holding_request))
+
+@router.post(
+    "/all-portfolios/csv",
+    summary="Download all portfolios summary CSV",
+    description="Returns the All Portfolios summary table as a downloadable CSV file.",
+    tags=["All Portfolios"],
+)
+def download_all_portfolios_csv(request: AllPortfoliosRequest):
+    # Get CSV bytes from service
+    csv_bytes = get_all_portfolios_csv(request)
+
+    # Build filename
+    start_str = request.start.strftime("%Y-%m-%d")
+    end_str = request.end.strftime("%Y-%m-%d")
+    filename = f"all_portfolios_{start_str}_to_{end_str}.csv"
+
+    # Return CSV download
+    return StreamingResponse(
+        io.BytesIO(csv_bytes),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

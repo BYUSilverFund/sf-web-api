@@ -176,3 +176,10 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
     result = {"start": min_date, "end": max_date, "portfolios": portfolios}
 
     return result
+
+def get_all_portfolios_csv(request: AllPortfoliosRequest) -> bytes:
+    portfolios_summary = get_all_portfolios_summary(request)
+    portfolios = portfolios_summary["portfolios"]
+    df = pl.DataFrame(portfolios)
+    csv_bytes = df.write_csv().encode("utf-8")
+    return csv_bytes
