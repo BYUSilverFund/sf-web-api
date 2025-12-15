@@ -8,7 +8,11 @@ from app.models.fund import (
     FundSummaryResponse,
     FundTimeSeriesResponse,
 )
-from app.services.fund import get_fund_summary, get_fund_time_series, get_fund_time_series_csv
+from app.services.fund import (
+    get_fund_summary,
+    get_fund_time_series,
+    get_fund_time_series_csv,
+)
 
 
 router = APIRouter()
@@ -37,13 +41,13 @@ def fund_summary(holding_request: FundRequest) -> FundSummaryResponse:
 def fund_time_series(holding_request: FundRequest) -> FundTimeSeriesResponse:
     return FundTimeSeriesResponse(**get_fund_time_series(holding_request))
 
+
 @router.post(
     "/all-funds/csv",
     summary="Download all funds time series performance CSV",
     description="Returns aggregated All Funds performance time series as a CSV file.",
 )
 def download_get_fund_time_series_csv(request: FundRequest):
-
     # Call service function → returns CSV bytes
     csv_bytes = get_fund_time_series_csv(request)
 
@@ -56,5 +60,5 @@ def download_get_fund_time_series_csv(request: FundRequest):
     return StreamingResponse(
         io.BytesIO(csv_bytes),
         media_type="text/csv",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )

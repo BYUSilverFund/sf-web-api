@@ -177,6 +177,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
 
     return result
 
+
 def get_all_portfolios_csv(request: AllPortfoliosRequest) -> bytes:
     portfolios_summary = get_all_portfolios_summary(request)
     portfolios = portfolios_summary["portfolios"]

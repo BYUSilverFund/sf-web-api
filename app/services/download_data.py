@@ -1,10 +1,10 @@
 import polars as pl
 import polars_ols as pls  # noqa: F401
-
-from app.db import engine
 from app.models.download_data import (
     DownloadDataAllPortfolioRequest,
 )
+
+from app.db import engine
 from app.utils import account_id_to_name
 
 

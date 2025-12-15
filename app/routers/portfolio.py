@@ -8,7 +8,11 @@ from app.models.portfolio import (
     PortfolioSummaryResponse,
     PortfolioTimeSeriesResponse,
 )
-from app.services.portfolio import get_portfolio_summary, get_portfolio_time_series, get_portfolio_time_series_csv
+from app.services.portfolio import (
+    get_portfolio_summary,
+    get_portfolio_time_series,
+    get_portfolio_time_series_csv,
+)
 
 
 router = APIRouter()
@@ -38,6 +42,7 @@ def portfolio_time_series(
     holding_request: PortfolioRequest,
 ) -> PortfolioTimeSeriesResponse:
     return PortfolioTimeSeriesResponse(**get_portfolio_time_series(holding_request))
+
 
 @router.post(
     "/portfolio/csv",

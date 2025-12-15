@@ -7,7 +7,10 @@ from app.models.all_portfolios import (
     AllPortfoliosRequest,
     AllPortfoliosSummaryResponse,
 )
-from app.services.all_portfolios import get_all_portfolios_summary,get_all_portfolios_csv
+from app.services.all_portfolios import (
+    get_all_portfolios_csv,
+    get_all_portfolios_summary,
+)
 
 
 router = APIRouter()
@@ -25,6 +28,7 @@ def all_portfolios_summary(
     holding_request: AllPortfoliosRequest,
 ) -> AllPortfoliosSummaryResponse:
     return AllPortfoliosSummaryResponse(**get_all_portfolios_summary(holding_request))
+
 
 @router.post(
     "/all-portfolios/csv",

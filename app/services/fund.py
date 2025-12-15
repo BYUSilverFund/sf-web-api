@@ -211,6 +211,7 @@ def get_fund_time_series(request: FundRequest) -> dict[str, any]:
 
     return result
 
+
 def get_fund_time_series_csv(request: FundRequest) -> bytes:
     time_series = get_fund_time_series(request)
     records = time_series["records"]
