@@ -31,7 +31,7 @@ def all_portfolios_summary(
 
 
 @router.post(
-    "/all-portfolios/csv",
+    "/csv",
     summary="Download all portfolios summary CSV",
     description="Returns the All Portfolios summary table as a downloadable CSV file.",
     tags=["All Portfolios"],

@@ -45,7 +45,7 @@ def portfolio_time_series(
 
 
 @router.post(
-    "/portfolio/csv",
+    "/csv",
     summary="Download single portfolio time series CSV",
     description="Returns a CSV file containing the time series for a single portfolio.",
     tags=["Portfolio"],
