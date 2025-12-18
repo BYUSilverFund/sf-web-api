@@ -101,7 +101,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         connection=engine,
     )["max"].item()
 
-    side = shares.sign()
+    side = stk["shares"].sign()
 
     n_days = len(df_wide["date"].unique())
 
