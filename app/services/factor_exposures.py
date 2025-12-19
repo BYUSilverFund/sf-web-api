@@ -1,5 +1,4 @@
 import polars as pl
-from fastapi import HTTPException
 
 from app import s3
 from app.db import engine
@@ -7,10 +6,17 @@ from app.utils import get_account_id_from_name
 
 
 def get_factor_exposures() -> pl.DataFrame:
-    return s3.scan_parquet(
-        bucket_name="barra-factor-exposures",
-        file_key="latest_exposures.parquet",
-    ).collect()
+    return (
+        s3.scan_parquet(
+            bucket_name="barra-factor-exposures",
+            file_key="latest_exposures.parquet",
+        )
+        .with_columns(
+            # replace "." with " " in ticker column. need to use literal=True becuase . is a special character in regex
+            pl.col("ticker").str.replace_all(".", " ", literal=True)
+        )
+        .collect()
+    )
 
 
 # you need to convert fund to client account id
@@ -34,7 +40,6 @@ def fund_holding_weights(client_account_id: str) -> pl.DataFrame:
 def all_fund_holding_weights() -> pl.DataFrame:
     quant_paper_id = get_account_id_from_name("quant_paper")
     weights = pl.read_database(
-        # FIXME: I dont think the weights are correct. I am getting .97 for all funds combined
         query=f"""
             SELECT 
                 ticker,
@@ -52,6 +57,12 @@ def all_fund_holding_weights() -> pl.DataFrame:
 def compute_exposure_weights(
     exposures: pl.DataFrame, weights: pl.DataFrame
 ) -> pl.DataFrame:
+    positions_not_in_exposures = (
+        weights.select("ticker")
+        .join(exposures.select("ticker"), on="ticker", how="anti")
+        .to_series()
+        .to_list()
+    )
     combo = exposures.join(weights, on="ticker", how="inner").drop(
         [
             col
@@ -62,22 +73,15 @@ def compute_exposure_weights(
     portfolio_exposure = combo.fill_null(0).select(
         (pl.col("^USSLOWL_.*$") * pl.col("weight")).sum()
     )
-    return portfolio_exposure
+    return portfolio_exposure.to_dicts()[0], positions_not_in_exposures
 
 
 def fund_weighted_exposures(fund: str):
-    exposures = get_factor_exposures()
-    try:
-        client_account_id = get_account_id_from_name(fund)
-    except ValueError:
-        raise HTTPException(status_code=404, detail=f"Fund '{fund}' not found")
-    portfolio_exposure = compute_exposure_weights(
-        exposures, fund_holding_weights(client_account_id)
+    client_account_id = get_account_id_from_name(fund)
+    return compute_exposure_weights(
+        get_factor_exposures(), fund_holding_weights(client_account_id)
     )
-    return portfolio_exposure.to_dicts()[0]
 
 
 def all_fund_weighted_exposures():
-    exposures = get_factor_exposures()
-    weights = all_fund_holding_weights()
-    return compute_exposure_weights(exposures, weights).to_dicts()[0]
+    return compute_exposure_weights(get_factor_exposures(), all_fund_holding_weights())
