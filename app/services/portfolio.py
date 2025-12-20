@@ -219,3 +219,11 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
     }
 
     return result
+
+
+def get_portfolio_time_series_csv(request: PortfolioRequest) -> bytes:
+    portfolio_ts = get_portfolio_time_series(request)
+    records = portfolio_ts["records"]
+    df = pl.DataFrame(records)
+    csv_bytes = df.write_csv().encode("utf-8")
+    return csv_bytes
