@@ -26,21 +26,6 @@ router = APIRouter()
 
 
 @router.get(
-    "/fund/{fund}",
-    summary="Get Fund Factor Exposures",
-    description="Returns factor exposures for a specific fund",
-    response_description="Factor exposures and positions not found in factor exposures for the specified fund",
-    tags=["Factor Exposures"],
-)
-def fund_exposures(fund: str) -> dict:
-    exposure, positions_not_in_exposures = fund_weighted_exposures(fund)
-    return {
-        "exposures": exposure,
-        "positions_not_in_exposures": positions_not_in_exposures,
-    }
-
-
-@router.get(
     "/all_funds",
     summary="Get All Funds Factor Exposures",
     description="Returns factor exposures for all funds",
@@ -49,6 +34,21 @@ def fund_exposures(fund: str) -> dict:
 )
 def all_fund_exposures() -> dict:
     exposure, positions_not_in_exposures = all_fund_weighted_exposures()
+    return {
+        "exposures": exposure,
+        "positions_not_in_exposures": positions_not_in_exposures,
+    }
+
+
+@router.get(
+    "/{fund}",
+    summary="Get Fund Factor Exposures",
+    description="Returns factor exposures for a specific fund",
+    response_description="Factor exposures and positions not found in factor exposures for the specified fund",
+    tags=["Factor Exposures"],
+)
+def fund_exposures(fund: str) -> dict:
+    exposure, positions_not_in_exposures = fund_weighted_exposures(fund)
     return {
         "exposures": exposure,
         "positions_not_in_exposures": positions_not_in_exposures,
