@@ -9,6 +9,7 @@ from app.routers import (
     benchmark,
     covariance_matrix,
     download_data,
+    factor_exposures,
     fund,
     holding,
     portfolio,
@@ -40,6 +41,9 @@ app.include_router(
 )
 app.include_router(
     covariance_matrix.router, prefix="/covariance-matrix", tags=["Covariance Matrix"]
+)
+app.include_router(
+    factor_exposures.router, prefix="/factor-exposures", tags=["Factor Exposures"]
 )
 
 
