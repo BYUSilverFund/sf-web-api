@@ -2,7 +2,9 @@ from fastapi import APIRouter
 
 from app.services.factor_exposures import (
     all_fund_weighted_exposures,
+    factor_breakdown,
     fund_weighted_exposures,
+    holding_exposures,
 )
 
 
@@ -41,6 +43,13 @@ def all_fund_exposures() -> dict:
 
 
 @router.get(
+    "/holdings/{holding}",
+)
+def holding_factor_exposures(holding: str) -> dict:
+    return holding_exposures(holding)
+
+
+@router.get(
     "/{fund}",
     summary="Get Fund Factor Exposures",
     description="Returns factor exposures for a specific fund",
@@ -53,3 +62,17 @@ def fund_exposures(fund: str) -> dict:
         "exposures": exposure,
         "positions_not_in_exposures": positions_not_in_exposures,
     }
+
+
+@router.get(
+    "/{fund}/{factor}",
+    summary="Get Fund Factor Exposure Breakdown",
+    description="Get a breakdown of what holdings contribute to this factor",
+    response_description="Breakdown of holdings contributing to the specified factor for the specified fund",
+    tags=["Factor Exposures"],
+)
+def fund_factor_breakdown(fund: str, factor: str) -> dict:
+    factor = factor.upper()
+    if not factor.startswith("USSLOWL_"):
+        factor = "USSLOWL_" + factor
+    return factor_breakdown(fund, factor)
