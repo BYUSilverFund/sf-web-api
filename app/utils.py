@@ -20,4 +20,4 @@ def get_account_id_from_name(name: str) -> str:
     if name in account_map:
         return account_map[name]
     else:
-        raise ValueError(f"Name not supported: {name}")
+        raise ValueError(f"fund name not supported: {name}")

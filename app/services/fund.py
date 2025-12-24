@@ -210,3 +210,12 @@ def get_fund_time_series(request: FundRequest) -> dict[str, any]:
     }
 
     return result
+
+
+def get_fund_time_series_csv(request: FundRequest) -> bytes:
+    time_series = get_fund_time_series(request)
+    records = time_series["records"]
+    df = pl.DataFrame(records)
+    csv_bytes = df.write_csv().encode("utf-8")
+
+    return csv_bytes
