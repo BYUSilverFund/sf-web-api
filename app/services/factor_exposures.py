@@ -22,8 +22,6 @@ def get_factor_exposures(holding: str | None = None) -> pl.DataFrame:
     return lf.collect()
 
 
-# you need to convert fund to client account id
-#  holding returns already has weights calculated
 def fund_holding_weights(client_account_id: str) -> pl.DataFrame:
     weights = pl.read_database(
         query=f"""
