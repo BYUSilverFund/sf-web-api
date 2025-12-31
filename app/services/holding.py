@@ -101,7 +101,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         connection=engine,
     )["max"].item()
 
-    side = stk["shares"].sign()
+    side = stk["shares"].sign().last()
 
     n_days = len(df_wide["date"].unique())
 
@@ -121,7 +121,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     value = shares * price
     volatility = stk["return"].std() * (n_days**0.5) * 100
     dividends = side * (stk["dividends"].sum())
-    dividends_per_share = side * (stk["dividends_per_share"].sum)
+    dividends_per_share = side * (stk["dividends_per_share"].sum())
     dividend_yield = dividends / value * 100
 
     min_date = stk["date"].min()
