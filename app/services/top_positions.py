@@ -12,7 +12,7 @@ def get_top_positions(request: TopPositionsRequest) -> dict[str, any]:
         pl.read_database(
             query=f"""
                 SELECT MAX(report_date) AS max_date
-                FROM positions_new
+                FROM positions
                 WHERE client_account_id = '{client_account_id}'
             """,
             connection=engine,
@@ -27,7 +27,7 @@ def get_top_positions(request: TopPositionsRequest) -> dict[str, any]:
             SELECT
                 symbol AS ticker,
                 quantity * mark_price AS value
-            FROM positions_new
+            FROM positions
             WHERE client_account_id = '{client_account_id}'
                 AND report_date = '{max_date}'
             ORDER BY value DESC
