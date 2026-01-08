@@ -53,7 +53,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
                 SELECT 
                     date,
                     return
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -63,7 +63,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     rf = pl.read_database(
         query=f"""
                 SELECT * 
-                FROM risk_free_rate_new
+                FROM risk_free_rate
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -101,9 +101,11 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         connection=engine,
     )["max"].item()
 
+    side = stk["shares"].sign().last()
+
     n_days = len(df_wide["date"].unique())
 
-    total_return = stk["cummulative_return"].last() * 100
+    total_return = side * (stk["cummulative_return"].last() * 100)
     total_return_rf = df_wide["cummulative_return_rf"].last() * 100
     total_return_bmk = df_wide["cummulative_return_bmk"].last() * 100
 
@@ -118,8 +120,8 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     price = stk["price"].last()
     value = shares * price
     volatility = stk["return"].std() * (n_days**0.5) * 100
-    dividends = stk["dividends"].sum()
-    dividends_per_share = stk["dividends_per_share"].sum()
+    dividends = side * (stk["dividends"].sum())
+    dividends_per_share = side * (stk["dividends_per_share"].sum())
     dividend_yield = dividends / value * 100
 
     min_date = stk["date"].min()
@@ -196,7 +198,7 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
                 SELECT 
                     date,
                     return
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -295,7 +297,7 @@ def get_trades(request: HoldingRequest) -> dict[str, any]:
         pl.read_database(
             query=f"""
                 SELECT * 
-                FROM trades_new 
+                FROM trades 
                 WHERE client_account_id = '{client_account_id}' 
                     AND symbol = '{request.ticker}'
                     AND report_date BETWEEN '{request.start}' AND '{request.end}'
