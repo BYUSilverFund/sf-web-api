@@ -49,7 +49,7 @@ def get_portfolio_performance(
                 SELECT 
                     date,
                     return AS return_bmk
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date
                 ;
@@ -62,7 +62,7 @@ def get_portfolio_performance(
                 SELECT 
                     date,
                     return AS return_rf
-                FROM risk_free_rate_new
+                FROM risk_free_rate
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date
                 ;

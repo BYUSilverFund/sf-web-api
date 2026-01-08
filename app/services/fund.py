@@ -35,7 +35,7 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
                 SELECT 
                     date,
                     return
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -46,7 +46,7 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
         pl.read_database(
             query=f"""
                 SELECT * 
-                FROM risk_free_rate_new
+                FROM risk_free_rate
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -158,7 +158,7 @@ def get_fund_time_series(request: FundRequest) -> dict[str, any]:
                 SELECT 
                     date,
                     return
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,

@@ -46,7 +46,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
                 SELECT 
                     date,
                     return
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -57,7 +57,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         pl.read_database(
             query=f"""
                 SELECT * 
-                FROM risk_free_rate_new
+                FROM risk_free_rate
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,

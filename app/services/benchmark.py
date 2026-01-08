@@ -13,7 +13,7 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
                     adjusted_close,
                     return,
                     dividends_per_share
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -36,7 +36,7 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
         pl.read_database(
             query=f"""
                 SELECT * 
-                FROM risk_free_rate_new
+                FROM risk_free_rate
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -105,7 +105,7 @@ def get_benchmark_time_series(request: BenchmarkRequest) -> dict[str, any]:
                     adjusted_close,
                     return,
                     dividends_per_share
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
                 ;

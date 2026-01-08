@@ -53,7 +53,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
                 SELECT 
                     date,
                     return
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -63,7 +63,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     rf = pl.read_database(
         query=f"""
                 SELECT * 
-                FROM risk_free_rate_new
+                FROM risk_free_rate
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -198,7 +198,7 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
                 SELECT 
                     date,
                     return
-                FROM benchmark_new
+                FROM benchmark
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
             """,
@@ -297,7 +297,7 @@ def get_trades(request: HoldingRequest) -> dict[str, any]:
         pl.read_database(
             query=f"""
                 SELECT * 
-                FROM trades_new 
+                FROM trades 
                 WHERE client_account_id = '{client_account_id}' 
                     AND symbol = '{request.ticker}'
                     AND report_date BETWEEN '{request.start}' AND '{request.end}'
