@@ -8,7 +8,7 @@ from app.routers import (
     all_portfolios,
     benchmark,
     covariance_matrix,
-    download_data,
+    factor_exposures,
     fund,
     holding,
     portfolio,
@@ -26,7 +26,6 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 
-app.include_router(download_data.router, prefix="/reports", tags=["Reports"])
 app.include_router(holding.router, prefix="/holding", tags=["Holding"])
 app.include_router(all_holdings.router, prefix="/all-holdings", tags=["All Holdings"])
 app.include_router(portfolio.router, prefix="/portfolio", tags=["Portfolio"])
@@ -40,6 +39,9 @@ app.include_router(
 )
 app.include_router(
     covariance_matrix.router, prefix="/covariance-matrix", tags=["Covariance Matrix"]
+)
+app.include_router(
+    factor_exposures.router, prefix="/factor-exposures", tags=["Factor Exposures"]
 )
 
 
