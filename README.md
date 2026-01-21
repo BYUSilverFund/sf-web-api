@@ -40,6 +40,18 @@ uvicorn app.main:app --reload
 
 API routes are listed at to [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
+### Authentication (AWS Cognito)
+
+Sensitive routes (for example, `POST /covariance-matrix/latest`) are protected using AWS Cognito JWTs.
+
+Configure the following environment variables in each environment (Dev/Prod) to point at the appropriate user pool and app client:
+
+- `COGNITO_REGION` – AWS region of the Cognito user pool (e.g. `us-east-1`).
+- `COGNITO_USER_POOL_ID` – ID of the Cognito User Pool.
+- `COGNITO_APP_CLIENT_ID` – App client ID whose tokens are accepted by the API.
+
+The backend expects an `Authorization: Bearer <JWT>` header containing a valid Cognito access or ID token. In the browser, ensure your frontend obtains the token from Cognito (e.g. via Amplify/Auth) and forwards it on API requests.
+
 ## Code Quality
 
 We use **Ruff** for both linting and formatting. Make sure to lint and format before pushing to Github. Github Actions is set up to fail ruff fails.

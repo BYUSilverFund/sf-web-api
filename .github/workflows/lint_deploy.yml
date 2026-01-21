@@ -49,12 +49,15 @@ jobs:
       id-token: write
       contents: read
     env:
+      COGNITO_REGION: "us-west-2"
       AWS_REGION: "us-west-2"
       DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
       DB_NAME: ${{ secrets.DB_NAME }}
       DB_USER: ${{ secrets.DB_USER }}
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       DB_PORT: ${{ secrets.DB_PORT }}
+      COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      COGNITO_APP_CLIENT_ID: ${{ secrets.COGNITO_APP_CLIENT_ID }}
 
     steps:
       - name: Print Environment
@@ -70,7 +73,7 @@ jobs:
           # vars. pulls from environment variables, set in GitHub Settings Environments
           role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ vars.COGNITO_REGION }}
           audience: sts.amazonaws.com
           output-env-credentials: true
 
