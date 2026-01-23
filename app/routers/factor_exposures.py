@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth import cognito_auth
 from app.services.factor_exposures import (
     all_fund_weighted_exposures,
     factor_breakdown,
@@ -34,7 +35,7 @@ router = APIRouter()
     response_description="Factor exposures and positions not found in factor exposures for all funds",
     tags=["Factor Exposures"],
 )
-def all_fund_exposures() -> dict:
+def all_fund_exposures(_claims=Depends(cognito_auth)) -> dict:
     exposure, positions_not_in_exposures = all_fund_weighted_exposures()
     return {
         "exposures": exposure,
@@ -45,7 +46,7 @@ def all_fund_exposures() -> dict:
 @router.get(
     "/holdings/{holding}",
 )
-def holding_factor_exposures(holding: str) -> dict:
+def holding_factor_exposures(holding: str, _claims=Depends(cognito_auth)) -> dict:
     return holding_exposures(holding)
 
 
@@ -56,7 +57,7 @@ def holding_factor_exposures(holding: str) -> dict:
     response_description="Factor exposures and positions not found in factor exposures for the specified fund",
     tags=["Factor Exposures"],
 )
-def fund_exposures(fund: str) -> dict:
+def fund_exposures(fund: str, _claims=Depends(cognito_auth)) -> dict:
     exposure, positions_not_in_exposures = fund_weighted_exposures(fund)
     return {
         "exposures": exposure,
@@ -71,7 +72,9 @@ def fund_exposures(fund: str) -> dict:
     response_description="Breakdown of holdings contributing to the specified factor for the specified fund",
     tags=["Factor Exposures"],
 )
-def fund_factor_breakdown(fund: str, factor: str) -> dict:
+def fund_factor_breakdown(
+    fund: str, factor: str, _claims=Depends(cognito_auth)
+) -> dict:
     factor = factor.upper()
     if not factor.startswith("USSLOWL_"):
         factor = "USSLOWL_" + factor
