@@ -9,9 +9,9 @@ from app.models.fund import (
     FundTimeSeriesResponse,
 )
 from app.services.fund import (
+    get_all_fund_time_series_csv,
     get_fund_summary,
     get_fund_time_series,
-    get_fund_time_series_csv,
 )
 
 
@@ -49,7 +49,7 @@ def fund_time_series(holding_request: FundRequest) -> FundTimeSeriesResponse:
 )
 def download_get_fund_time_series_csv(request: FundRequest):
     # Call service function → returns CSV bytes
-    csv_bytes = get_fund_time_series_csv(request)
+    csv_bytes = get_all_fund_time_series_csv(request)
 
     # Build filename using request dates
     start_str = request.start.strftime("%Y-%m-%d")
