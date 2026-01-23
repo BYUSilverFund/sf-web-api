@@ -327,3 +327,12 @@ def get_trades(request: HoldingRequest) -> dict[str, any]:
     }
 
     return result
+
+
+def get_portfolio_time_series_csv(request: HoldingRequest) -> bytes:
+    holding_ts = get_holding_time_series(request)
+    records = holding_ts["records"]
+    df = pl.DataFrame(records)
+    df = df.sort("date", descending=True)
+    csv_bytes = df.write_csv().encode("utf-8")
+    return csv_bytes
