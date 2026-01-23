@@ -1,8 +1,9 @@
 import io
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from app.auth import cognito_auth
 from app.models.covariance_matrix import Fund, TickersList
 from app.services.covariance_matrix import (
     get_covariance_matrix,
@@ -23,6 +24,7 @@ router = APIRouter()
 )
 def covariance_matrix(
     tickers: TickersList,
+    _claims=Depends(cognito_auth),
 ) -> StreamingResponse:
     covariance_matrix = get_covariance_matrix(tickers)
     csv_string = covariance_matrix.write_csv()
