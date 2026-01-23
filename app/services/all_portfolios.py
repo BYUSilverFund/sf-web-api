@@ -178,9 +178,75 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
     return result
 
 
-def get_all_portfolios_csv(request: AllPortfoliosRequest) -> bytes:
-    portfolios_summary = get_all_portfolios_summary(request)
-    portfolios = portfolios_summary["portfolios"]
-    df = pl.DataFrame(portfolios)
-    csv_bytes = df.write_csv().encode("utf-8")
-    return csv_bytes
+def get_all_portfolios_timeseries_csv(request: AllPortfoliosRequest) -> bytes:
+    stk = (
+        pl.read_database(
+            query=f"""
+                SELECT *
+                FROM fund_returns
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+            connection=engine,
+        )
+        .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
+        .with_columns(pl.col("return").replace({-1: 0}))
+        .sort("date")
+        .with_columns(
+            pl.col("return")
+            .add(1)
+            .cum_prod()
+            .sub(1)
+            .over("client_account_id")
+            .alias("cummulative_return"),
+            pl.col("client_account_id")
+            .replace(account_id_to_name())
+            .alias("portfolio"),
+        )
+        .select(
+            "date",
+            "portfolio",
+            "value",
+            "return",
+            "cummulative_return",
+            "dividends",
+        )
+    )
+
+    bmk = pl.read_database(
+        query=f"""
+                SELECT date, return
+                FROM benchmark
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+        connection=engine,
+    ).select(
+        "date",
+        pl.col("return").cast(pl.Float64).alias("benchmark_return"),
+    )
+
+    ts = (
+        stk.join(bmk, on="date", how="left")
+        .with_columns(
+            pl.col("benchmark_return")
+            .add(1)
+            .cum_prod()
+            .sub(1)
+            .over("portfolio")
+            .alias("benchmark_cummulative_return")
+        )
+        .select(
+            pl.col("date"),
+            pl.col("portfolio"),
+            pl.col("value").alias("portfolio_value"),
+            pl.col("return").alias("return_"),
+            pl.col("cummulative_return"),
+            pl.col("dividends"),
+            pl.col("benchmark_return"),
+            pl.col("benchmark_cummulative_return"),
+        )
+        .sort(["date", "portfolio"], descending=[False, True])
+    )
+
+    return ts.write_csv().encode("utf-8")

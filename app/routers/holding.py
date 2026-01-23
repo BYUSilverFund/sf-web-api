@@ -1,4 +1,7 @@
+import io
+
 from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from app.models.holding import (
     DividendsResponse,
@@ -11,6 +14,7 @@ from app.services.holding import (
     get_dividends,
     get_holding_summary,
     get_holding_time_series,
+    get_portfolio_time_series_csv,
     get_trades,
 )
 
@@ -64,3 +68,26 @@ def dividends(holding_request: HoldingRequest) -> DividendsResponse:
 )
 def trades(holding_request: HoldingRequest) -> TradesResponse:
     return TradesResponse(**get_trades(holding_request))
+
+
+@router.post(
+    "/fund/ticker/csv",
+    summary="Download single holding time series CSV for a ticker with in a fund",
+    description="Returns a CSV file containing the time series for a single holding.",
+    tags=["Holding"],
+)
+def download_portfolio_time_series_csv(request: HoldingRequest):
+    csv_bytes = get_portfolio_time_series_csv(request)
+
+    start_str = request.start.strftime("%Y-%m-%d")
+    end_str = request.end.strftime("%Y-%m-%d")
+    fund = request.fund.lower()
+    ticker = request.ticker.upper()
+
+    filename = f"{fund}_{ticker}_{start_str}_to_{end_str}.csv"
+
+    return StreamingResponse(
+        io.BytesIO(csv_bytes),
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )

@@ -8,8 +8,8 @@ from app.models.all_portfolios import (
     AllPortfoliosSummaryResponse,
 )
 from app.services.all_portfolios import (
-    get_all_portfolios_csv,
     get_all_portfolios_summary,
+    get_all_portfolios_timeseries_csv,
 )
 
 
@@ -32,13 +32,13 @@ def all_portfolios_summary(
 
 @router.post(
     "/csv",
-    summary="Download all portfolios summary CSV",
-    description="Returns the All Portfolios summary table as a downloadable CSV file.",
+    summary="Download all portfolios CSV",
+    description="Returns the all portfolio time series mapped to each fund.",
     tags=["All Portfolios"],
 )
 def download_all_portfolios_csv(request: AllPortfoliosRequest):
     # Get CSV bytes from service
-    csv_bytes = get_all_portfolios_csv(request)
+    csv_bytes = get_all_portfolios_timeseries_csv(request)
 
     # Build filename
     start_str = request.start.strftime("%Y-%m-%d")

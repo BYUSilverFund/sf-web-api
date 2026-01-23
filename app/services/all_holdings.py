@@ -171,3 +171,50 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
     }
 
     return result
+
+
+def get_all_holdings_time_series_csv(request: AllHoldingsRequest) -> bytes:
+    client_account_id = get_account_id_from_name(request.fund)
+
+    df = (
+        pl.read_database(
+            query=f"""
+                SELECT *
+                FROM holding_returns
+                WHERE client_account_id = '{client_account_id}'
+                  AND date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY ticker, date;
+            """,
+            connection=engine,
+        )
+        .with_columns(
+            pl.col(
+                "return",
+                "dividends_per_share",
+                "value",
+                "price",
+                "shares",
+            ).cast(pl.Float64)
+        )
+        .with_columns(
+            pl.col("return")
+            .add(1)
+            .cum_prod()
+            .sub(1)
+            .over("ticker")
+            .alias("cummulative_return")
+        )
+        .select(
+            "date",
+            "ticker",
+            "shares",
+            "price",
+            "value",
+            pl.col("return").alias("return_"),
+            "cummulative_return",
+            "dividends_per_share",
+        )
+        .sort(["date", "ticker"], descending=[False, True])
+    )
+
+    return df.write_csv().encode("utf-8")
