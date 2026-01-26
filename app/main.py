@@ -12,6 +12,7 @@ from app.routers import (
     fund,
     holding,
     portfolio,
+    risk_forecast,
     top_positions,
 )
 
@@ -42,6 +43,9 @@ app.include_router(
 )
 app.include_router(
     factor_exposures.router, prefix="/factor-exposures", tags=["Factor Exposures"]
+)
+app.include_router(
+    risk_forecast.router, prefix="/risk_forecast", tags=["Risk Forecast"]
 )
 
 
