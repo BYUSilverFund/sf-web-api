@@ -42,10 +42,10 @@ def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
     cov_df = get_covariance_matrix(tickers_list)
 
     # Align covariance matrix rows/cols to portfolio tickers (exclude IWV from matrix)
-    cov_tickers = tickers  # already sorted the same way we selected
+    cov_tickers = tickers
     cov_matrix = (
         cov_df.filter(pl.col("ticker").is_in(cov_tickers))
-        .select(cov_tickers)  # only portfolio tickers, no IWV
+        .select(cov_tickers)
         .to_numpy()
     )
 
