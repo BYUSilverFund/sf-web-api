@@ -176,20 +176,22 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
             ).cast(pl.Float64),
         )
         .sort("date", "ticker")
-        .with_columns(
-            pl.col("return").add(1).cum_prod().sub(1).alias("cummulative_return")
-        )
-        .select(
-            "date",
-            "weight",
-            "price",
-            "shares",
-            "value",
-            "return",
-            "cummulative_return",
-            "dividends",
-            "dividends_per_share",
-        )
+    )
+
+    side = stk["shares"].sign().last()
+
+    stk = stk.with_columns(
+        pl.col("return").add(1).cum_prod().sub(1).mul(side).alias("cummulative_return")
+    ).select(
+        "date",
+        "weight",
+        "price",
+        "shares",
+        "value",
+        "return",
+        "cummulative_return",
+        "dividends",
+        "dividends_per_share",
     )
 
     bmk = (
