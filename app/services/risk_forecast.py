@@ -38,14 +38,15 @@ def _all_fund_holding_weights() -> pl.DataFrame:
 
 
 def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
+    tickers = sorted(tickers)
     tickers_list = TickersList(tickers=tickers)
     cov_df = get_covariance_matrix(tickers_list)
 
     # Align covariance matrix rows/cols to portfolio tickers (exclude IWV from matrix)
-    cov_tickers = tickers
     cov_matrix = (
-        cov_df.filter(pl.col("ticker").is_in(cov_tickers))
-        .select(cov_tickers)
+        cov_df.filter(pl.col("ticker").is_in(tickers))
+        .sort("ticker")
+        .select(tickers)
         .to_numpy()
     )
 
@@ -55,7 +56,8 @@ def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
 
     # Asset-to-benchmark covariances (column IWV)
     asset_to_benchmark_cov = (
-        cov_df.filter(pl.col("ticker").is_in(cov_tickers))
+        cov_df.filter(pl.col("ticker").is_in(tickers))
+        .sort("ticker")
         .select("IWV")
         .to_numpy()
         .flatten()
@@ -88,6 +90,7 @@ def all_funds_risk_forecast() -> dict:
 def fund_risk_forecast(fund: str) -> dict:
     client_account_id = get_account_id_from_name(fund)
     weights_df = _fund_holding_weights(client_account_id)
+    print(weights_df)
     tickers = weights_df["ticker"].to_list()
     weights = np.array(weights_df["weight"], dtype=float)
     return _compute_portfolio_risk(tickers, weights)
