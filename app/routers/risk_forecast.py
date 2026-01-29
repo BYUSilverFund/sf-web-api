@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
+from app.auth import cognito_auth
 from app.services.risk_forecast import (
     all_funds_risk_forecast,
     fund_risk_forecast,
@@ -16,7 +17,7 @@ router = APIRouter()
     response_description="Portfolio risk forecast for all funds",
     tags=["Risk Forecast"],
 )
-def all_fund_risk_forecasts() -> dict:
+def all_fund_risk_forecasts(_claims=Depends(cognito_auth)) -> dict:
     return all_funds_risk_forecast()
 
 
@@ -27,5 +28,5 @@ def all_fund_risk_forecasts() -> dict:
     response_description="Portfolio risk forecast for specified fund",
     tags=["Risk Forecast"],
 )
-def fund_risk_forecasts(fund: str) -> dict:
+def fund_risk_forecasts(fund: str, _claims=Depends(cognito_auth)) -> dict:
     return fund_risk_forecast(fund)
