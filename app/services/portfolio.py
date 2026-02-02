@@ -223,11 +223,31 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
 
 def get_portfolio_time_series_csv(request: PortfolioRequest) -> bytes:
     portfolio_ts = get_portfolio_time_series(request)
-    records = portfolio_ts["records"]
-    df = pl.DataFrame(records)
-    df = df.sort("date", descending=True)
-    csv_bytes = df.write_csv().encode("utf-8")
-    return csv_bytes
+    df = pl.DataFrame(portfolio_ts["records"]).sort("date", descending=False)
+
+    rf = (
+        pl.read_database(
+            query=f"""
+                SELECT
+                    date,
+                    return AS risk_free_return
+                FROM risk_free_rate
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+            connection=engine,
+        )
+        .with_columns(pl.col("risk_free_return").cast(pl.Float64))
+        .sort("date")
+    )
+
+    df = df.join(rf, on="date", how="left").with_columns(
+        pl.col("risk_free_return").fill_null(strategy="forward")
+    )
+
+    df = df.with_columns(pl.col("risk_free_return").mul(100))
+
+    return df.write_csv().encode("utf-8")
 
 
 def get_portfolio_trades(request: PortfolioRequest) -> dict[str, any]:
