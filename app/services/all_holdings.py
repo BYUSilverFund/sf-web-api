@@ -214,7 +214,28 @@ def get_all_holdings_time_series_csv(request: AllHoldingsRequest) -> bytes:
             "cummulative_return",
             "dividends_per_share",
         )
-        .sort(["date", "ticker"], descending=[False, True])
+    )
+
+    rf = (
+        pl.read_database(
+            query=f"""
+                SELECT
+                    date,
+                    return AS risk_free_return
+                FROM risk_free_rate
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+            connection=engine,
+        )
+        .with_columns(pl.col("risk_free_return").cast(pl.Float64))
+        .sort("date")
+    )
+
+    df = (
+        df.join(rf, on="date", how="left")
+        .with_columns(pl.col("risk_free_return").fill_null(strategy="forward"))
+        .sort(["date", "ticker"], descending=[False, False])
     )
 
     return df.write_csv().encode("utf-8")

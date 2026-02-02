@@ -226,15 +226,30 @@ def get_all_portfolios_timeseries_csv(request: AllPortfoliosRequest) -> bytes:
         pl.col("return").cast(pl.Float64).alias("benchmark_return"),
     )
 
+    rf = pl.read_database(
+        query=f"""
+                SELECT date, return
+                FROM risk_free_rate
+                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY date;
+            """,
+        connection=engine,
+    ).select(
+        "date",
+        pl.col("return").cast(pl.Float64).alias("risk_free_return"),
+    )
+
     ts = (
         stk.join(bmk, on="date", how="left")
+        .join(rf, on="date", how="left")
         .with_columns(
+            pl.col("risk_free_return").fill_null(strategy="forward"),
             pl.col("benchmark_return")
             .add(1)
             .cum_prod()
             .sub(1)
             .over("portfolio")
-            .alias("benchmark_cummulative_return")
+            .alias("benchmark_cummulative_return"),
         )
         .select(
             pl.col("date"),
@@ -245,8 +260,9 @@ def get_all_portfolios_timeseries_csv(request: AllPortfoliosRequest) -> bytes:
             pl.col("dividends"),
             pl.col("benchmark_return"),
             pl.col("benchmark_cummulative_return"),
+            pl.col("risk_free_return"),
         )
-        .sort(["date", "portfolio"], descending=[False, True])
+        .sort(["date", "portfolio"], descending=[False, False])
     )
 
     return ts.write_csv().encode("utf-8")
