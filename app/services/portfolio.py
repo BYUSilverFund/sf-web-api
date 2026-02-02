@@ -259,7 +259,7 @@ def get_portfolio_trades(request: PortfolioRequest) -> dict[str, any]:
                 FROM trades 
                 WHERE client_account_id = '{client_account_id}' 
                     AND report_date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY ASC report_date
+                ORDER BY report_date
                 ;
             """,
         connection=engine,
