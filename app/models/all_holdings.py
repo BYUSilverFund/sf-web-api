@@ -38,12 +38,9 @@ class AllHoldingsSummaryResponse(BaseModel):
 class AllHoldingsTimeSeriesRecord(BaseModel):
     date: date
     ticker: str
-    shares: int
     price: float
-    value: float
-    return_: float
-    cummulative_return: float
-    dividends_per_share: float
+    shares: float
+    fx_rate_to_base: float
 
 
 class AllHoldingsTimeSeriesResponse(BaseModel):

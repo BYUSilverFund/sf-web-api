@@ -180,39 +180,26 @@ def get_all_holdings_time_series(request: AllHoldingsRequest) -> bytes:
         pl.read_database(
             query=f"""
                 SELECT *
-                FROM holding_returns
+                FROM positions
                 WHERE client_account_id = '{client_account_id}'
-                  AND date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY ticker, date;
+                  AND report_date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY symbol, report_date;
             """,
             connection=engine,
         )
         .with_columns(
             pl.col(
-                "return",
-                "dividends_per_share",
-                "value",
-                "price",
-                "shares",
+                "mark_price",
+                "quantity",
+                "fx_rate_to_base",
             ).cast(pl.Float64)
         )
-        .with_columns(
-            pl.col("return")
-            .add(1)
-            .cum_prod()
-            .sub(1)
-            .over("ticker")
-            .alias("cummulative_return")
-        )
         .select(
-            "date",
-            "ticker",
-            "shares",
-            "price",
-            "value",
-            pl.col("return").alias("return_"),
-            "cummulative_return",
-            "dividends_per_share",
+            pl.col("report_date").alias("date"),
+            pl.col("symbol").alias("ticker"),
+            pl.col("mark_price").alias("price"),
+            pl.col("quantity").alias("shares"),
+            "fx_rate_to_base",
         )
     )
 
