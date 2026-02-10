@@ -4,9 +4,11 @@ from fastapi.responses import Response
 from app.models.all_holdings import (
     AllHoldingsRequest,
     AllHoldingsSummaryResponse,
+    AllHoldingsTimeSeriesResponse,
 )
 from app.services.all_holdings import (
     get_all_holdings_summary,
+    get_all_holdings_time_series,
     get_all_holdings_time_series_csv,
 )
 
@@ -26,6 +28,22 @@ def all_holdings_summary(
     holding_request: AllHoldingsRequest,
 ) -> AllHoldingsSummaryResponse:
     return AllHoldingsSummaryResponse(**get_all_holdings_summary(holding_request))
+
+
+@router.post(
+    "/time-series",
+    response_model=AllHoldingsTimeSeriesResponse,
+    summary="Get Fund Holdings Time Series Values",
+    description="Returns time series values for a given fund's holdings over a date range.",
+    response_description="Time series values for the requested fund's holdings.",
+    tags=["All Holdings"],
+)
+def all_holdings_time_series(
+    all_holdings_request: AllHoldingsRequest,
+) -> AllHoldingsTimeSeriesResponse:
+    return AllHoldingsTimeSeriesResponse(
+        **get_all_holdings_time_series(all_holdings_request)
+    )
 
 
 @router.post(
