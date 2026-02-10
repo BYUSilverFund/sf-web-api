@@ -173,7 +173,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
     return result
 
 
-def get_all_holdings_time_series(request: AllHoldingsRequest) -> bytes:
+def get_all_holdings_time_series(request: AllHoldingsRequest) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
 
     df = (
