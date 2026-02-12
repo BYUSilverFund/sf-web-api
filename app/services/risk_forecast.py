@@ -116,7 +116,9 @@ def fund_risk_forecast(fund: str) -> dict:
     weights_df = _fund_holding_weights(client_account_id)
     tickers = weights_df["ticker"].to_list()
     weights = np.array(weights_df["weight"], dtype=float)
-    return _compute_portfolio_risk(tickers, weights)
+    portfolio_risk = _compute_portfolio_risk(tickers, weights)
+    portfolio_risk["fund"] = fund
+    return portfolio_risk
 
 
 def fund_holding_risk_forecast(fund: str, ticker: str) -> dict:
@@ -135,11 +137,11 @@ def fund_holding_risk_forecast(fund: str, ticker: str) -> dict:
     single_holding_weights[holding_idx] = 1.0
     single_name_risk = _compute_portfolio_risk(sorted_tickers, single_holding_weights)
 
-    return {
-        "fund": fund,
-        "ticker": ticker,
-        "fund_weight": fund_weight,
-        "volatility": single_name_risk["volatility"],
-        "beta": single_name_risk["beta"],
-        "tracking_error": single_name_risk["tracking_error"],
-    }
+    single_name_risk.update(
+        {
+            "fund": fund,
+            "ticker": ticker,
+            "fund_weight": fund_weight,
+        }
+    )
+    return single_name_risk
