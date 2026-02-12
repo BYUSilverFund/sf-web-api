@@ -37,27 +37,37 @@ def _all_fund_holding_weights() -> pl.DataFrame:
     )
 
 
+def _sort_tickers_and_weights(
+    tickers: list[str], weights: np.ndarray
+) -> tuple[list[str], np.ndarray]:
+    sorted_tickers = sorted(t for t in tickers if t != "IWV")
+    if "IWV" in tickers:
+        sorted_tickers.append("IWV")
+    idx = {t: i for i, t in enumerate(tickers)}
+    order = [idx[t] for t in sorted_tickers]
+    sorted_weights = weights[order]
+    return sorted_tickers, sorted_weights
+
+
 def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
-    tickers = sorted(tickers)
+    tickers, weights = _sort_tickers_and_weights(tickers, weights)
     tickers_list = TickersList(tickers=tickers)
     cov_df = get_covariance_matrix(tickers_list)
 
-    # Align covariance matrix rows/cols to portfolio tickers (exclude IWV from matrix)
     cov_matrix = (
         cov_df.filter(pl.col("ticker").is_in(tickers))
-        .sort("ticker")
+        .sort(by=pl.col("ticker").replace({"IWV": "zzzIWV"}))
         .select(tickers)
         .to_numpy()
     )
 
-    # Portfolio variance and volatility
     variance = float(weights @ cov_matrix @ weights.T)
-    volatility = float(np.sqrt(variance))
+    volatility = float(np.sqrt(max(variance, 0.0)))
 
     # Asset-to-benchmark covariances (column IWV)
     asset_to_benchmark_cov = (
         cov_df.filter(pl.col("ticker").is_in(tickers))
-        .sort("ticker")
+        .sort(by=pl.col("ticker").replace({"IWV": "zzzIWV"}))
         .select("IWV")
         .to_numpy()
         .flatten()
@@ -69,20 +79,21 @@ def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
     )
 
     portfolio_to_benchmark_cov = float(weights @ asset_to_benchmark_cov)
-    beta = portfolio_to_benchmark_cov / benchmark_variance
-
-    # IWV benchmark weights
-    iwv_weights = (
-        cov_df.filter(pl.col("ticker").is_in(tickers))
-        .sort("ticker")
-        .select("IWV")
-        .to_numpy()
-        .flatten()
+    beta = (
+        portfolio_to_benchmark_cov / benchmark_variance
+        if benchmark_variance != 0
+        else float("nan")
     )
+
+    # IWV benchmark weights: 0 for all assets, 1 for IWV
+    iwv_weights = np.zeros_like(weights, dtype=float)
+    if "IWV" in tickers:
+        iwv_idx = tickers.index("IWV")
+        iwv_weights[iwv_idx] = 1.0
 
     active_weights = weights - iwv_weights
     tracking_error_variance = float(active_weights @ cov_matrix @ active_weights.T)
-    tracking_error = float(np.sqrt(max(tracking_error_variance, 0)))
+    tracking_error = float(np.sqrt(max(tracking_error_variance, 0.0)))
 
     return {
         "tickers": tickers,
@@ -103,81 +114,32 @@ def all_funds_risk_forecast() -> dict:
 def fund_risk_forecast(fund: str) -> dict:
     client_account_id = get_account_id_from_name(fund)
     weights_df = _fund_holding_weights(client_account_id)
-    print(weights_df)
     tickers = weights_df["ticker"].to_list()
     weights = np.array(weights_df["weight"], dtype=float)
     return _compute_portfolio_risk(tickers, weights)
 
 
-def fund_holding_risk_forecast(fund: str) -> dict:
+def fund_holding_risk_forecast(fund: str, ticker: str) -> dict:
     client_account_id = get_account_id_from_name(fund)
     weights_df = _fund_holding_weights(client_account_id)
     tickers = weights_df["ticker"].to_list()
     weights = np.array(weights_df["weight"], dtype=float)
-    fund_risk = _compute_portfolio_risk(tickers, weights)
-    sorted_tickers = sorted(tickers)
-    tickers_list = TickersList(tickers=sorted_tickers)
-    cov_df = get_covariance_matrix(tickers_list)
+    sorted_tickers, sorted_weights = _sort_tickers_and_weights(tickers, weights)
 
-    cov_matrix = (
-        cov_df.filter(pl.col("ticker").is_in(sorted_tickers))
-        .sort("ticker")
-        .select(sorted_tickers)
-        .to_numpy()
-    )
+    # get the holding weight in fund portfolio
+    holding_idx = sorted_tickers.index(ticker)
+    fund_weight = float(sorted_weights[holding_idx])
 
-    # Covariance of each asset with the benchmark (IWV column)
-    asset_to_benchmark_cov = (
-        cov_df.filter(pl.col("ticker").is_in(sorted_tickers))
-        .sort("ticker")
-        .select("IWV")
-        .to_numpy()
-        .flatten()
-    )
-
-    # Benchmark variance (IWV row/column)
-    benchmark_variance = (
-        cov_df.filter(pl.col("ticker") == "IWV").select("IWV").to_numpy()[0, 0]
-    )
-
-    benchmark_weights = asset_to_benchmark_cov
-
-    index_by_ticker = {t: i for i, t in enumerate(sorted_tickers)}
-    holdings: list[dict] = []
-
-    for ticker, fund_weight in zip(tickers, weights):
-        idx = index_by_ticker[ticker]
-
-        holding_variance = float(cov_matrix[idx, idx])
-        holding_volatility = float(np.sqrt(max(holding_variance, 0.0)))
-        holding_benchmark_cov = float(asset_to_benchmark_cov[idx])
-        holding_beta = holding_benchmark_cov / benchmark_variance
-
-        # Portfolio that is 100% in this holding
-        single_name_portfolio_weights = np.zeros_like(benchmark_weights, dtype=float)
-        single_name_portfolio_weights[idx] = 1.0
-
-        # Active weights vs benchmark
-        active_weights_vs_benchmark = single_name_portfolio_weights - benchmark_weights
-
-        # Tracking error for this holding vs benchmark
-        holding_te_variance = float(
-            active_weights_vs_benchmark @ cov_matrix @ active_weights_vs_benchmark.T
-        )
-        holding_tracking_error = float(np.sqrt(max(holding_te_variance, 0.0)))
-
-        holdings.append(
-            {
-                "ticker": ticker,
-                "fund_weight": float(fund_weight),
-                "volatility": holding_volatility,
-                "beta": holding_beta,
-                "tracking_error": holding_tracking_error,
-            }
-        )
+    # Build a portfolio that is 100% in this holding for the rest of metrics
+    single_holding_weights = np.zeros_like(sorted_weights, dtype=float)
+    single_holding_weights[holding_idx] = 1.0
+    single_name_risk = _compute_portfolio_risk(sorted_tickers, single_holding_weights)
 
     return {
         "fund": fund,
-        "fund_level": fund_risk,
-        "holdings": holdings,
+        "ticker": ticker,
+        "fund_weight": fund_weight,
+        "volatility": single_name_risk["volatility"],
+        "beta": single_name_risk["beta"],
+        "tracking_error": single_name_risk["tracking_error"],
     }

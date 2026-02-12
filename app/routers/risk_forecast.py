@@ -4,6 +4,7 @@ from app.auth import cognito_auth
 from app.services.risk_forecast import (
     all_funds_risk_forecast,
     fund_holding_risk_forecast,
+    fund_risk_forecast,
 )
 
 
@@ -23,30 +24,23 @@ def all_fund_risk_forecasts(_claims=Depends(cognito_auth)) -> dict:
 
 @router.get(
     "/{fund}",
-    summary="Get Single Fund Risk Forecast (with holdings)",
-    description="Returns beta, volatility, tracking error, and holdings-level risk for a single fund",
-    response_description="Portfolio and holdings risk forecast for specified fund",
+    summary="Get Single Fund Risk Forecast",
+    description="Returns beta, volatility, and tracking error for a single fund",
+    response_description="Portfolio risk forecast for specified fund",
     tags=["Risk Forecast"],
 )
 def fund_risk_forecasts(fund: str, _claims=Depends(cognito_auth)) -> dict:
-    # fund_holding_risk_forecast returns:
-    # { "fund": fund, "fund_level": {...}, "holdings": [...] }
-    result = fund_holding_risk_forecast(fund)
-    fund_level = result["fund_level"]
-    return {
-        "beta": fund_level["beta"],
-        "volatility": fund_level["volatility"],
-        "tracking_error": fund_level["tracking_error"],
-        "holdings": result["holdings"],
-    }
+    return fund_risk_forecast(fund)
 
 
 @router.get(
-    "/{fund}/holdings",
+    "/{fund}/holdings/{ticker}",
     summary="Get Single Fund Holding Risk Forecast",
-    description="Returns risk forecast metrics at the holding level for a single fund",
-    response_description="Holding-level risk forecast for specified fund",
+    description="Returns risk forecast metrics for a single holding within a fund",
+    response_description="Holding-level risk forecast for specified fund and ticker",
     tags=["Risk Forecast"],
 )
-def fund_holding_risk_forecasts(fund: str, _claims=Depends(cognito_auth)) -> dict:
-    return fund_holding_risk_forecast(fund)
+def fund_holding_risk_forecasts(
+    fund: str, ticker: str, _claims=Depends(cognito_auth)
+) -> dict:
+    return fund_holding_risk_forecast(fund, ticker)
