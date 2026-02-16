@@ -33,3 +33,18 @@ class AllHoldingsSummaryResponse(BaseModel):
     start: date
     end: date
     holdings: list[AllHoldingsRecord]
+
+
+class AllHoldingsTimeSeriesRecord(BaseModel):
+    date: date
+    ticker: str
+    price: float
+    shares: float
+    fx_rate_to_base: float
+
+
+class AllHoldingsTimeSeriesResponse(BaseModel):
+    fund: str
+    start: date
+    end: date
+    records: list[AllHoldingsTimeSeriesRecord]

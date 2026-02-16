@@ -173,6 +173,50 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
     return result
 
 
+def get_all_holdings_time_series(request: AllHoldingsRequest) -> dict[str, any]:
+    client_account_id = get_account_id_from_name(request.fund)
+
+    df = (
+        pl.read_database(
+            query=f"""
+                SELECT *
+                FROM positions
+                WHERE client_account_id = '{client_account_id}'
+                  AND report_date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY symbol, report_date;
+            """,
+            connection=engine,
+        )
+        .with_columns(
+            pl.col(
+                "mark_price",
+                "quantity",
+                "fx_rate_to_base",
+            ).cast(pl.Float64)
+        )
+        .select(
+            pl.col("report_date").alias("date"),
+            pl.col("symbol").alias("ticker"),
+            pl.col("mark_price").alias("price"),
+            pl.col("quantity").alias("shares"),
+            "fx_rate_to_base",
+        )
+    )
+
+    min_date = df["date"].min()
+    max_date = df["date"].max()
+    records = df.to_dicts()
+
+    result = {
+        "fund": request.fund,
+        "start": min_date,
+        "end": max_date,
+        "records": records,
+    }
+
+    return result
+
+
 def get_all_holdings_time_series_csv(request: AllHoldingsRequest) -> bytes:
     client_account_id = get_account_id_from_name(request.fund)
 
