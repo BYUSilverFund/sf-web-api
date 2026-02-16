@@ -19,11 +19,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
-        .with_columns(
-            pl.col("return").replace(
-                {-1: 0}
-            )  # TODO: Fix so that the first day in the max history isn't -1 return.
-        )
+        .with_columns(pl.col("return").replace({-1: 0}))
         .sort("date")
         .with_columns(
             pl.col("return")
@@ -173,7 +169,12 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
     min_date = stk["date"].min()
     max_date = stk["date"].max()
 
-    result = {"start": min_date, "end": max_date, "portfolios": portfolios}
+    result = {
+        "start": min_date,
+        "end": max_date,
+        "trading_days": stk["date"].n_unique(),
+        "portfolios": portfolios,
+    }
 
     return result
 

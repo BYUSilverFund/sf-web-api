@@ -167,6 +167,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         "fund": request.fund,
         "start": min_date,
         "end": max_date,
+        "trading_days": stk["date"].n_unique(),
         "holdings": holdings.to_dicts(),
     }
 

@@ -78,7 +78,7 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
         .with_columns(pl.col("return_stk", "return_bmk").sub("return_rf"))
     )
 
-    n_days = len(stk["date"].unique())
+    n_days = stk["date"].n_unique()
 
     total_return = stk["cummulative_return"].last() * 100
     total_return_annualized = total_return * 252 / n_days
@@ -112,6 +112,7 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
     result = {
         "start": min_date,
         "end": max_date,
+        "trading_days": n_days,
         "value": value,
         "total_return": total_return,
         "volatility": volatility,
