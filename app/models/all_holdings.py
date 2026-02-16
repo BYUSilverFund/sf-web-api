@@ -32,6 +32,7 @@ class AllHoldingsRecord(BaseModel):
 class AllHoldingsSummaryResponse(BaseModel):
     start: date
     end: date
+    trading_days: int
     holdings: list[AllHoldingsRecord]
 
 

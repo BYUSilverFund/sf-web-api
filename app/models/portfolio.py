@@ -18,6 +18,7 @@ class PortfolioSummaryResponse(BaseModel):
     fund: str
     start: date
     end: date
+    trading_days: int
     value: float
     total_return: float
     sharpe_ratio: float

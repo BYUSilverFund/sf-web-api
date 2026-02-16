@@ -25,6 +25,7 @@ class HoldingSummaryResponse(BaseModel):
     ticker: str
     start: date
     end: date
+    trading_days: int
     active: bool
     shares: float
     price: float

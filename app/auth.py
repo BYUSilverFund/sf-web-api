@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwk, jwt
-from jose.utils import base64url_decode
 
 
 COGNITO_REGION = os.getenv("COGNITO_REGION")
@@ -39,17 +38,25 @@ _security_scheme = HTTPBearer(auto_error=False)
 _jwks_cache: Optional[Dict[str, Any]] = None
 _jwks_last_fetch: float = 0.0
 _JWKS_TTL_SECONDS = 3600
+_JWKS_TIMEOUT_SECONDS = 5
+_ALLOWED_JWT_ALGS = {"RS256"}
 
 
-def _get_jwks() -> Dict[str, Any]:
+def _get_jwks(force_refresh: bool = False) -> Dict[str, Any]:
     global _jwks_cache, _jwks_last_fetch
 
     now = time.time()
-    if _jwks_cache is not None and (now - _jwks_last_fetch) < _JWKS_TTL_SECONDS:
+    if (
+        not force_refresh
+        and _jwks_cache is not None
+        and (now - _jwks_last_fetch) < _JWKS_TTL_SECONDS
+    ):
         return _jwks_cache
 
     try:
-        with urllib.request.urlopen(JWKS_URL) as response:  # nosec B310
+        with urllib.request.urlopen(  # nosec B310
+            JWKS_URL, timeout=_JWKS_TIMEOUT_SECONDS
+        ) as response:
             body = response.read().decode("utf-8")
             _jwks_cache = json.loads(body)
             _jwks_last_fetch = now
@@ -62,9 +69,6 @@ def _get_jwks() -> Dict[str, Any]:
 
 
 def _verify_cognito_token(token: str) -> Dict[str, Any]:
-    jwks = _get_jwks()
-    keys = jwks.get("keys", [])
-
     try:
         headers = jwt.get_unverified_headers(token)
     except Exception as exc:
@@ -80,11 +84,30 @@ def _verify_cognito_token(token: str) -> Dict[str, Any]:
             detail="Missing key id in token headers",
         )
 
+    alg = headers.get("alg")
+    if alg not in _ALLOWED_JWT_ALGS:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Unsupported token algorithm",
+        )
+
+    jwks = _get_jwks()
+    keys = jwks.get("keys", [])
+
     key_data: Optional[Dict[str, Any]] = None
     for key in keys:
         if key.get("kid") == kid:
             key_data = key
             break
+
+    if key_data is None:
+        # One forced refresh in case of key rotation
+        jwks = _get_jwks(force_refresh=True)
+        keys = jwks.get("keys", [])
+        for key in keys:
+            if key.get("kid") == kid:
+                key_data = key
+                break
 
     if key_data is None:
         raise HTTPException(
@@ -95,18 +118,13 @@ def _verify_cognito_token(token: str) -> Dict[str, Any]:
     public_key = jwk.construct(key_data)
 
     try:
-        message, encoded_signature = token.rsplit(".", 1)
-        decoded_signature = base64url_decode(encoded_signature.encode("utf-8"))
-
-        if not public_key.verify(message.encode("utf-8"), decoded_signature):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token signature",
-            )
-
-        claims = jwt.get_unverified_claims(token)
-    except HTTPException:
-        raise
+        claims = jwt.decode(
+            token,
+            public_key,
+            algorithms=list(_ALLOWED_JWT_ALGS),
+            issuer=COGNITO_ISSUER,
+            options={"verify_aud": False},
+        )
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -114,23 +132,15 @@ def _verify_cognito_token(token: str) -> Dict[str, Any]:
         ) from exc
 
     # Basic claim checks
-    exp = claims.get("exp")
-    if exp is None or time.time() > float(exp):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token is expired",
-        )
-
-    issuer = claims.get("iss")
-    if issuer != COGNITO_ISSUER:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token issuer",
-        )
-
     # Allow both access and id tokens, but enforce client binding
     token_use = claims.get("token_use")
     client_id = claims.get("client_id") or claims.get("aud")
+
+    if "exp" not in claims:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token is missing expiration",
+        )
 
     if token_use not in {"access", "id"}:
         raise HTTPException(
@@ -138,7 +148,12 @@ def _verify_cognito_token(token: str) -> Dict[str, Any]:
             detail="Unsupported token type",
         )
 
-    if client_id != COGNITO_APP_CLIENT_ID:
+    if isinstance(client_id, list):
+        client_match = COGNITO_APP_CLIENT_ID in client_id
+    else:
+        client_match = client_id == COGNITO_APP_CLIENT_ID
+
+    if not client_match:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token client does not match application",

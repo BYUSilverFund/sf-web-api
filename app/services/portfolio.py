@@ -117,6 +117,7 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
         "fund": request.fund,
         "start": min_date,
         "end": max_date,
+        "trading_days": n_days,
         "value": value,
         "total_return": total_return,
         "volatility": volatility,

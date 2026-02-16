@@ -132,6 +132,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         "ticker": request.ticker,
         "start": min_date,
         "end": max_date,
+        "trading_days": n_days,
         "active": active,
         "shares": shares,
         "price": price,

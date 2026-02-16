@@ -14,6 +14,7 @@ class BenchmarkRequest(BaseModel):
 class BenchmarkSummaryResponse(BaseModel):
     start: date
     end: date
+    trading_days: int
     adjusted_close: float
     total_return: float
     sharpe_ratio: float
