@@ -85,6 +85,7 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
     result = {
         "start": min_date,
         "end": max_date,
+        "trading_days": n_days,
         "adjusted_close": adjusted_close,
         "total_return": total_return,
         "volatility": volatility,

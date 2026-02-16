@@ -28,4 +28,5 @@ class AllPortfoliosRecord(BaseModel):
 class AllPortfoliosSummaryResponse(BaseModel):
     start: date
     end: date
+    trading_days: int
     portfolios: list[AllPortfoliosRecord]
