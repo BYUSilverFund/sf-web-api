@@ -37,27 +37,37 @@ def _all_fund_holding_weights() -> pl.DataFrame:
     )
 
 
+def _sort_tickers_and_weights(
+    tickers: list[str], weights: np.ndarray
+) -> tuple[list[str], np.ndarray]:
+    sorted_tickers = sorted(t for t in tickers if t != "IWV")
+    if "IWV" in tickers:
+        sorted_tickers.append("IWV")
+    idx = {t: i for i, t in enumerate(tickers)}
+    order = [idx[t] for t in sorted_tickers]
+    sorted_weights = weights[order]
+    return sorted_tickers, sorted_weights
+
+
 def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
-    tickers = sorted(tickers)
+    tickers, weights = _sort_tickers_and_weights(tickers, weights)
     tickers_list = TickersList(tickers=tickers)
     cov_df = get_covariance_matrix(tickers_list)
 
-    # Align covariance matrix rows/cols to portfolio tickers (exclude IWV from matrix)
     cov_matrix = (
         cov_df.filter(pl.col("ticker").is_in(tickers))
-        .sort("ticker")
+        .sort(by=pl.col("ticker").replace({"IWV": "zzzIWV"}))
         .select(tickers)
         .to_numpy()
     )
 
-    # Portfolio variance and volatility
     variance = float(weights @ cov_matrix @ weights.T)
-    volatility = float(np.sqrt(variance))
+    volatility = float(np.sqrt(max(variance, 0.0)))
 
     # Asset-to-benchmark covariances (column IWV)
     asset_to_benchmark_cov = (
         cov_df.filter(pl.col("ticker").is_in(tickers))
-        .sort("ticker")
+        .sort(by=pl.col("ticker").replace({"IWV": "zzzIWV"}))
         .select("IWV")
         .to_numpy()
         .flatten()
@@ -69,14 +79,28 @@ def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
     )
 
     portfolio_to_benchmark_cov = float(weights @ asset_to_benchmark_cov)
-    beta = portfolio_to_benchmark_cov / benchmark_variance
+    beta = (
+        portfolio_to_benchmark_cov / benchmark_variance
+        if benchmark_variance != 0
+        else float("nan")
+    )
+
+    # IWV benchmark weights: 0 for all assets, 1 for IWV
+    iwv_weights = np.zeros_like(weights, dtype=float)
+    if "IWV" in tickers:
+        iwv_idx = tickers.index("IWV")
+        iwv_weights[iwv_idx] = 1.0
+
+    active_weights = weights - iwv_weights
+    tracking_error_variance = float(active_weights @ cov_matrix @ active_weights.T)
+    tracking_error = float(np.sqrt(max(tracking_error_variance, 0.0)))
 
     return {
         "tickers": tickers,
         "weights": weights.tolist(),
-        "variance": variance,
         "volatility": volatility,
         "beta": beta,
+        "tracking_error": tracking_error,
     }
 
 
@@ -90,7 +114,34 @@ def all_funds_risk_forecast() -> dict:
 def fund_risk_forecast(fund: str) -> dict:
     client_account_id = get_account_id_from_name(fund)
     weights_df = _fund_holding_weights(client_account_id)
-    print(weights_df)
     tickers = weights_df["ticker"].to_list()
     weights = np.array(weights_df["weight"], dtype=float)
-    return _compute_portfolio_risk(tickers, weights)
+    portfolio_risk = _compute_portfolio_risk(tickers, weights)
+    portfolio_risk["fund"] = fund
+    return portfolio_risk
+
+
+def fund_holding_risk_forecast(fund: str, ticker: str) -> dict:
+    client_account_id = get_account_id_from_name(fund)
+    weights_df = _fund_holding_weights(client_account_id)
+    tickers = weights_df["ticker"].to_list()
+    weights = np.array(weights_df["weight"], dtype=float)
+    sorted_tickers, sorted_weights = _sort_tickers_and_weights(tickers, weights)
+
+    # get the holding weight in fund portfolio
+    holding_idx = sorted_tickers.index(ticker)
+    fund_weight = float(sorted_weights[holding_idx])
+
+    # Build a portfolio that is 100% in this holding for the rest of metrics
+    single_holding_weights = np.zeros_like(sorted_weights, dtype=float)
+    single_holding_weights[holding_idx] = 1.0
+    single_name_risk = _compute_portfolio_risk(sorted_tickers, single_holding_weights)
+
+    single_name_risk.update(
+        {
+            "fund": fund,
+            "ticker": ticker,
+            "fund_weight": fund_weight,
+        }
+    )
+    return single_name_risk
