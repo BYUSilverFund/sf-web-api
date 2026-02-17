@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get(
     "/all_funds",
     summary="Get All Funds Risk Forecast",
-    description="Returns beta, volatility, and tracknig error forecast for the aggregate of all funds",
+    description="Returns beta, volatility, and tracking error forecast for the aggregate of all funds",
     response_description="Portfolio risk forecast for all funds",
     tags=["Risk Forecast"],
 )
