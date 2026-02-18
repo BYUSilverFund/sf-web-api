@@ -143,6 +143,15 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         .with_columns(
             pl.col("total_return", "volatility", "dividend_yield", "alpha").mul(100)
         )
+        .with_columns(pl.col("value").sum().over(pl.lit(1)).alias("total_value"))
+        .with_columns(
+            (pl.col("value") / pl.col("total_value")).alias("weight"),
+        )
+        .with_columns(
+            (pl.col("alpha") / 100 * pl.col("weight"))
+            .mul(100)
+            .alias("alpha_contribution")
+        )
         .select(
             "ticker",
             "active",
@@ -155,6 +164,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             "dividends_per_share",
             "dividend_yield",
             "alpha",
+            "alpha_contribution",
             "beta",
         )
         .sort("value", descending=True)

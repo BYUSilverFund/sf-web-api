@@ -26,6 +26,7 @@ class AllHoldingsRecord(BaseModel):
     dividends_per_share: float
     dividend_yield: float
     alpha: float
+    alpha_contribution: float
     beta: float
 
 
