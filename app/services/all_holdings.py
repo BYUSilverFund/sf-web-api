@@ -107,6 +107,11 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             .over("ticker")
             .alias("cummulative_return_bmk"),
         )
+        # Calculate daily weights for time-weighted average
+        .with_columns(pl.col("value").sum().over("date").alias("daily_total_value"))
+        .with_columns(
+            (pl.col("value") / pl.col("daily_total_value")).alias("daily_weight")
+        )
         .group_by("ticker")
         .agg(
             pl.col("date").max(),
@@ -120,6 +125,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             pl.col("return").std().alias("volatility"),
             pl.col("dividends_per_share").mul("shares").sum().alias("dividends"),
             pl.col("dividends_per_share").sum(),
+            pl.col("daily_weight").mean().alias("avg_weight"),
             pl.col("xs_return").least_squares.ols(
                 pl.col("xs_return_bmk"), mode="coefficients", add_intercept=True
             ),
@@ -148,7 +154,7 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
             (pl.col("value") / pl.col("total_value")).alias("weight"),
         )
         .with_columns(
-            (pl.col("alpha") / 100 * pl.col("weight"))
+            (pl.col("alpha") / 100 * pl.col("avg_weight"))
             .mul(100)
             .alias("alpha_contribution")
         )
