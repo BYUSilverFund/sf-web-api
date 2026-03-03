@@ -1,0 +1,96 @@
+name: Deploy to Elastic Beanstalk
+
+on:
+  # Runs for both direct pushes and PR merges (merge creates a push event)
+  push:
+    branches:
+      - dev
+      - prod
+    paths-ignore:
+      - "README.md"
+      - "tests/**"
+    #   - ".github/**"
+
+concurrency:
+  # Cancel any in-progress deploy for the same target branch
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      COGNITO_REGION: "us-west-2"
+      AWS_REGION: "us-west-2"
+      DB_ENDPOINT: ${{ secrets.DB_ENDPOINT }}
+      DB_NAME: ${{ secrets.DB_NAME }}
+      DB_USER: ${{ secrets.DB_USER }}
+      DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      DB_PORT: ${{ secrets.DB_PORT }}
+      COGNITO_USER_POOL_ID: ${{ secrets.COGNITO_USER_POOL_ID }}
+      COGNITO_APP_CLIENT_ID: ${{ secrets.COGNITO_APP_CLIENT_ID }}
+
+    steps:
+      - name: Print Environment
+        run: |
+          echo "Deploying to environment: ${{ github.ref_name == 'prod' && 'Production' || 'Development' }}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-session-name: GitHub_to_AWS_via_FederatedOIDC
+          aws-region: ${{ vars.COGNITO_REGION }}
+          audience: sts.amazonaws.com
+          output-env-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: "latest"
+
+      - name: Sync dependencies
+        run: |
+          uv sync --all-extras
+
+      - name: Test Procfile command, ensure app starts
+        run: |
+          uv run uvicorn app.main:app --host=0.0.0.0 --port=5000 &
+          sleep 5
+          curl --fail http://localhost:5000/health || (echo "App failed to start" && exit 1)
+          pkill -f "uvicorn"
+
+      - name: Package application
+        run: |
+          zip -r app.zip . -x "*.git*" "*.venv*" "__pycache__/*"
+
+      - name: Set Version Label
+        run: |
+          echo "VERSION_LABEL=$(date +'%Y-%m-%d-%H%M%S')" >> $GITHUB_ENV
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp app.zip s3://${{ vars.EB_S3_BUCKET }}/app-${{ env.VERSION_LABEL }}.zip
+
+      - name: Deploy to Elastic Beanstalk
+        run: |
+          aws elasticbeanstalk create-application-version \
+            --application-name "${{ vars.EB_APP_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}" \
+            --source-bundle S3Bucket="${{ vars.EB_S3_BUCKET }}",S3Key="app-${{ env.VERSION_LABEL }}.zip"
+          aws elasticbeanstalk update-environment \
+            --application-name "${{ vars.EB_APP_NAME }}" \
+            --environment-name "${{ vars.EB_ENV_NAME }}" \
+            --version-label "${{ env.VERSION_LABEL }}"
