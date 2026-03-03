@@ -1,54 +1,23 @@
-name: Lint and Deploy to Elastic Beanstalk
+name: Deploy to Elastic Beanstalk
 
 on:
-  pull_request:
-    branches:
-      - dev
-      - prod
-    paths-ignore:
-      - "README.md"
+  # Runs for both direct pushes and PR merges (merge creates a push event)
   push:
     branches:
       - dev
       - prod
     paths-ignore:
       - "README.md"
+      - "tests/**"
+    #   - ".github/**"
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Cancel any in-progress deploy for the same target branch
+  group: deploy-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
-  lint-and-format:
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v2
-        with:
-          version: "latest"
-
-      - name: Sync dev dependencies
-        run: |
-          uv sync --extra dev
-
-      - name: Run Ruff linter
-        run: |
-          uv run ruff check .
-
-      - name: Check formatting with Ruff
-        run: |
-          uv run ruff format --check .
-  # only deploy on merge to dev or prod branches.
   deploy:
-    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/prod') }}
     runs-on: ubuntu-latest
     environment: ${{ github.ref_name == 'prod' && 'Production' || github.ref_name == 'dev' && 'Development' || '' }}
     permissions:
@@ -68,7 +37,7 @@ jobs:
     steps:
       - name: Print Environment
         run: |
-          echo "Deploying to environment: ${{ job.environment }}"
+          echo "Deploying to environment: ${{ github.ref_name == 'prod' && 'Production' || 'Development' }}"
 
       - name: Checkout code
         uses: actions/checkout@v4
@@ -76,7 +45,6 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # vars. pulls from environment variables, set in GitHub Settings Environments
           role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
           role-session-name: GitHub_to_AWS_via_FederatedOIDC
           aws-region: ${{ vars.COGNITO_REGION }}
@@ -125,4 +93,4 @@ jobs:
           aws elasticbeanstalk update-environment \
             --application-name "${{ vars.EB_APP_NAME }}" \
             --environment-name "${{ vars.EB_ENV_NAME }}" \
-            --version-label "${{ env.VERSION_LABEL }}" \
+            --version-label "${{ env.VERSION_LABEL }}"
