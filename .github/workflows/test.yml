@@ -38,8 +38,8 @@ jobs:
         with:
           version: latest
 
-      - name: Sync dependencies
-        run: uv sync --all-extras
+      - name: Sync dev dependencies
+        run: uv sync --extra dev
 
       - name: Run tests
-        run: pytest -q
+        run: uv run pytest -q
