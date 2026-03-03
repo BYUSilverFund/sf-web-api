@@ -46,6 +46,7 @@ jobs:
       - name: Check formatting with Ruff
         run: |
           uv run ruff format --check .
+  # only deploy on merge to dev or prod branches.
   deploy:
     if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/prod') }}
     runs-on: ubuntu-latest
