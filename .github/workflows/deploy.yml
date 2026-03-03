@@ -67,10 +67,22 @@ jobs:
 
       - name: Test Procfile command, ensure app starts
         run: |
-          uv run uvicorn app.main:app --host=0.0.0.0 --port=5000 &
-          sleep 5
-          curl --fail http://localhost:5000/health || (echo "App failed to start" && exit 1)
-          pkill -f "uvicorn"
+          uv run uvicorn app.main:app --host=0.0.0.0 --port=5000 > uvicorn.log 2>&1 &
+          APP_PID=$!
+
+          for attempt in {1..30}; do
+            if curl -fsS http://localhost:5000/health; then
+              echo "App started successfully"
+              kill "$APP_PID" || true
+              exit 0
+            fi
+            sleep 2
+          done
+
+          echo "App failed to start"
+          cat uvicorn.log
+          kill "$APP_PID" || true
+          exit 1
 
       - name: Package application
         run: |
