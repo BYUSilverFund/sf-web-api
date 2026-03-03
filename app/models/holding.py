@@ -1,16 +1,11 @@
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class HoldingRequest(BaseModel):
-    fund: str
-    ticker: str
-    start: date
-    end: date
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "fund": "grad",
                 "ticker": "AAPL",
@@ -18,6 +13,12 @@ class HoldingRequest(BaseModel):
                 "end": "2025-08-20",
             }
         }
+    )
+
+    fund: str
+    ticker: str
+    start: date
+    end: date
 
 
 class HoldingSummaryResponse(BaseModel):

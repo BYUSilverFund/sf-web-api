@@ -1,14 +1,15 @@
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class AllPortfoliosRequest(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={"example": {"start": "2024-08-20", "end": "2025-08-20"}}
+    )
+
     start: date
     end: date
-
-    class Config:
-        json_schema_extra = {"example": {"start": "2024-08-20", "end": "2025-08-20"}}
 
 
 class AllPortfoliosRecord(BaseModel):
