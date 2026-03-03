@@ -1,17 +1,18 @@
 from datetime import date
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class TopPositionsRequest(BaseModel):
-    fund: str
-
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "fund": "grad",
             }
         }
+    )
+
+    fund: str
 
 
 class TopPositionsRecord(BaseModel):

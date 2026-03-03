@@ -4,32 +4,67 @@ Web API written in Python FastAPI for use with the Silver Fund dashboard.
 
 ## Setup
 
-Create virtual environemnt
+### Prerequisites
+
+Install uv if not already installed:
 
 ```bash
-python -m venv .venv
+curl -LsSf https://astral.sh/uv/install.sh | sh  # macOS/Linux
+# Or on Windows using PowerShell:
+powershell -Command "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
-Activate virtual environment
+For more installation options, see the [uv installation guide](https://docs.astral.sh/uv/getting-started/installation/).
+
+### Installation
+
+Sync the virtual environment with dependencies:
+
+```bash
+uv sync --all-extras
+```
+
+Activate the virtual environment:
 
 ```bash
 source .venv/bin/activate
-.venv\Scripts\Activate 
+# On Windows:
+.venv\Scripts\Activate.ps1
 ```
 
-Install dependencies
+## Development Environment
 
-```bash
-pip install -r requirements.txt
-pip install -r requirements-dev.txt  # For development tools
-```
-
-Install pre-commit hooks
+Install pre-commit hooks (optional):
 
 ```bash
 pre-commit install
 ```
 
+View installed dependencies:
+
+```bash
+uv pip list
+```
+
+Add a new dependency:
+
+```bash
+uv add package-name
+# For dev only:
+uv add --dev package-name
+```
+
+Update lock file after dependency changes:
+
+```bash
+uv lock
+```
+
+Sync lock file to environment:
+
+```bash
+uv sync --all-extras
+```
 ## Development
 
 Run the FastAPI app
