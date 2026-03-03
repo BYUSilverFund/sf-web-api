@@ -1,0 +1,45 @@
+name: Run Tests
+
+on:
+  pull_request:
+    branches:
+      - dev
+      - prod
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      COGNITO_REGION: us-east-1
+      COGNITO_USER_POOL_ID: us-east-1_test123
+      COGNITO_APP_CLIENT_ID: test-app-client-id
+      DB_USER: test_user
+      DB_PASSWORD: test_password
+      DB_ENDPOINT: localhost
+      DB_PORT: "5432"
+      DB_NAME: test_db
+      CORS_ACCESS_LIST_CSV: http://localhost:3000,http://localhost:8080
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v2
+        with:
+          version: latest
+
+      - name: Sync dependencies
+        run: uv sync --all-extras
+
+      - name: Run tests
+        run: pytest -q
