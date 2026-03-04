@@ -10,6 +10,7 @@ from app.models.portfolio import (
     PortfolioTradesResponse,
 )
 from app.services.portfolio import (
+    get_portfolio_active_summary,
     get_portfolio_summary,
     get_portfolio_time_series,
     get_portfolio_time_series_csv,
@@ -30,6 +31,20 @@ router = APIRouter()
 )
 def portfolio_summary(holding_request: PortfolioRequest) -> PortfolioSummaryResponse:
     return PortfolioSummaryResponse(**get_portfolio_summary(holding_request))
+
+
+@router.post(
+    "/summary/active",
+    response_model=PortfolioSummaryResponse,
+    summary="Get Active Portfolio Summary",
+    description="Returns active summary statistics for a given portfolio over a date range.",
+    response_description="Active summary metrics for the requested portfolio.",
+    tags=["Portfolio"],
+)
+def portfolio_active_summary(
+    holding_request: PortfolioRequest,
+) -> PortfolioSummaryResponse:
+    return PortfolioSummaryResponse(**get_portfolio_active_summary(holding_request))
 
 
 @router.post(
