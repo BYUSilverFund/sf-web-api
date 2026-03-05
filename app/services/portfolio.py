@@ -6,15 +6,17 @@ from app.models.portfolio import PortfolioRequest
 from app.utils import get_account_id_from_name
 
 
-def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
+def _get_portfolio_frames(
+    request: PortfolioRequest,
+) -> tuple[pl.DataFrame, pl.DataFrame, pl.DataFrame]:
     client_account_id = get_account_id_from_name(request.fund)
 
     stk = (
         pl.read_database(
             query=f"""
-                SELECT * 
-                FROM fund_returns 
-                WHERE client_account_id = '{client_account_id}' 
+                SELECT *
+                FROM fund_returns
+                WHERE client_account_id = '{client_account_id}'
                     AND date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date
                 ;
@@ -22,11 +24,7 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
-        .with_columns(
-            pl.col("return").replace(
-                {-1: 0}
-            )  # TODO: Fix so that the first day in the max history isn't -1 return.
-        )
+        .with_columns(pl.col("return").replace({-1: 0}))
         .sort("date")
         .with_columns(
             pl.col("return").add(1).cum_prod().sub(1).alias("cummulative_return")
@@ -36,7 +34,7 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
 
     bmk = pl.read_database(
         query=f"""
-                SELECT 
+                SELECT
                     date,
                     return
                 FROM benchmark
@@ -49,7 +47,7 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     rf = (
         pl.read_database(
             query=f"""
-                SELECT * 
+                SELECT *
                 FROM risk_free_rate
                 WHERE date BETWEEN '{request.start}' AND '{request.end}'
                 ORDER BY date;
@@ -59,6 +57,12 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
         .with_columns(pl.col("return").cast(pl.Float64))
         .sort("date")
     )
+
+    return stk, bmk, rf
+
+
+def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
+    stk, bmk, rf = _get_portfolio_frames(request)
 
     df_wide = (
         stk.join(bmk, on=["date"], suffix="_bmk", how="left")
@@ -133,6 +137,130 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     return result
 
 
+def get_portfolio_active_summary(request: PortfolioRequest) -> dict[str, any]:
+    stk, bmk, rf = _get_portfolio_frames(request)
+
+    client_account_id = get_account_id_from_name(request.fund)
+    end_date = value = stk["date"].last()
+
+    # get the holding value for the benchmark on the end date
+    bmk_holding_value = pl.read_database(
+        query=f"""
+            SELECT value
+            FROM holding_returns
+            WHERE client_account_id = '{client_account_id}'
+                AND date = '{end_date}'
+                AND ticker = 'IWV'
+            LIMIT 1
+        """,
+        connection=engine,
+    )
+
+    # check to make sure it has a value (if not there is no holding value for the benchmark, so we will assume 0). convert df to float type
+    if bmk_holding_value.is_empty():
+        bmk_holding_value = 0
+    else:
+        bmk_holding_value = float(bmk_holding_value["value"].item())
+
+    dividends = pl.read_database(
+        query=f"""
+            SELECT sum(net_amount) AS dividends  FROM dividends
+            WHERE symbol != 'IWV'
+                AND ex_date BETWEEN '{request.start}' AND '{request.end}'
+            GROUP BY client_account_id
+            HAVING client_account_id = '{client_account_id}'
+        """,
+        connection=engine,
+    )
+
+    if dividends.is_empty():
+        dividends = 0
+    else:
+        dividends = float(dividends["dividends"].item())
+
+    df_wide = (
+        stk.join(bmk, on=["date"], suffix="_bmk", how="left")
+        .join(rf, on=["date"], suffix="_rf", how="left")
+        .select(
+            "date",
+            pl.col("return").alias("return_stk"),
+            "return_bmk",
+            pl.col("return_rf").fill_null(strategy="forward"),
+        )
+        .with_columns(
+            pl.col("return_stk").sub("return_bmk").alias("return_active"),
+            pl.col("return_stk", "return_bmk").sub("return_rf"),
+        )
+        .sort("date")
+        .with_columns(
+            pl.col("return_rf").add(1).cum_prod().sub(1).alias("cummulative_return_rf"),
+            pl.col("return_bmk")
+            .add(1)
+            .cum_prod()
+            .sub(1)
+            .alias("cummulative_return_bmk"),
+            pl.col("return_active")
+            .add(1)
+            .cum_prod()
+            .sub(1)
+            .alias("cummulative_return_active"),
+        )
+    )
+
+    n_days = len(stk["date"].unique())
+    total_return = df_wide["cummulative_return_active"].last() * 100
+    total_return_annualized = total_return * 252 / n_days
+
+    total_return_rf = df_wide["cummulative_return_rf"].last() * 100
+    total_return_rf_annualized = total_return_rf * 252 / n_days
+    total_return_bmk = df_wide["cummulative_return_bmk"].last() * 100
+
+    model = smf.ols("return_active ~ return_bmk", df_wide).fit()
+    beta = model.params["return_bmk"].item()
+    alpha = (total_return - total_return_rf) - beta * (
+        total_return_bmk - total_return_rf
+    )
+
+    value = stk["value"].last() - bmk_holding_value
+    active_return_std = df_wide["return_active"].std()
+    volatility = active_return_std * (n_days**0.5) * 100
+    volatility_annualized = active_return_std * (252**0.5) * 100
+    dividend_yield = dividends / value * 100
+    sharpe_ratio = (
+        (total_return_annualized - total_return_rf_annualized) / volatility_annualized
+        if volatility_annualized != 0
+        else 0
+    )
+    tracking_error = active_return_std * (n_days**0.5) * 100
+    tracking_error_annualized = active_return_std * (252**0.5) * 100
+    information_ratio = (
+        total_return_annualized / tracking_error_annualized
+        if tracking_error_annualized != 0
+        else 0
+    )
+
+    max_date = stk["date"].max()
+    min_date = stk["date"].min()
+
+    result = {
+        "fund": request.fund,
+        "start": min_date,
+        "end": max_date,
+        "trading_days": n_days,
+        "value": value,
+        "total_return": total_return,
+        "volatility": volatility,
+        "sharpe_ratio": sharpe_ratio,
+        "dividends": dividends,
+        "dividend_yield": dividend_yield,
+        "alpha": alpha,
+        "beta": beta,
+        "tracking_error": tracking_error,
+        "information_ratio": information_ratio,
+    }
+    return result
+
+
 def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
 
@@ -149,11 +277,7 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
             connection=engine,
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
-        .with_columns(
-            pl.col("return").replace(
-                {-1: 0}
-            )  # TODO: Fix so that the first day in the max history isn't -1 return.
-        )
+        .with_columns(pl.col("return").replace({-1: 0}))
         .sort("date")
         .with_columns(
             pl.col("return").add(1).cum_prod().sub(1).alias("cummulative_return")
