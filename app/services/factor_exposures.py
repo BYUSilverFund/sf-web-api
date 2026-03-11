@@ -119,6 +119,41 @@ def fund_weighted_exposures(fund: str):
     )
 
 
+def fund_active_holding_weights(client_account_id: str) -> pl.DataFrame:
+    # Exclude the benchmark holding (IWV) from the fund and renormalize
+    weights = pl.read_database(
+        query=f"""
+            SELECT
+                client_account_id,
+                ticker,
+                weight
+            FROM holding_returns
+            WHERE date = (select max(date) from holding_returns)
+                AND client_account_id = '{client_account_id}'
+                AND ticker != 'IWV'
+            """,
+        connection=engine,
+    )
+
+    df = pl.DataFrame(weights)
+    # If there are no non-benchmark holdings, return empty frame
+    if df.is_empty():
+        return df
+
+    total = float(df.select(pl.col("weight")).sum().to_series()[0])
+    if total == 0:
+        return df
+
+    return df.with_columns((pl.col("weight") / total).alias("weight"))
+
+
+def fund_active_weighted_exposures(fund: str):
+    client_account_id = get_account_id_from_name(fund)
+    return compute_exposure_weights(
+        get_factor_exposures(), fund_active_holding_weights(client_account_id)
+    )
+
+
 def all_fund_weighted_exposures():
     return compute_exposure_weights(get_factor_exposures(), all_fund_holding_weights())
 

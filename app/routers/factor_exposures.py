@@ -4,6 +4,7 @@ from app.auth import cognito_auth
 from app.services.factor_exposures import (
     all_fund_weighted_exposures,
     factor_breakdown,
+    fund_active_weighted_exposures,
     fund_weighted_exposures,
     holding_exposures,
 )
@@ -59,6 +60,21 @@ def holding_factor_exposures(holding: str, _claims=Depends(cognito_auth)) -> dic
 )
 def fund_exposures(fund: str, _claims=Depends(cognito_auth)) -> dict:
     exposure, positions_not_in_exposures = fund_weighted_exposures(fund)
+    return {
+        "exposures": exposure,
+        "positions_not_in_exposures": positions_not_in_exposures,
+    }
+
+
+@router.get(
+    "/{fund}/active",
+    summary="Get Fund Active Factor Exposures",
+    description="Returns active factor exposures for a specific fund (excludes benchmark IWV and renormalizes holdings)",
+    response_description="Active factor exposures and positions not in exposures for the specified fund",
+    tags=["Factor Exposures"],
+)
+def fund_exposures_active(fund: str, _claims=Depends(cognito_auth)) -> dict:
+    exposure, positions_not_in_exposures = fund_active_weighted_exposures(fund)
     return {
         "exposures": exposure,
         "positions_not_in_exposures": positions_not_in_exposures,
