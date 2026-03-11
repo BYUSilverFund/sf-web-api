@@ -58,12 +58,24 @@ def all_fund_holding_weights() -> pl.DataFrame:
 def compute_exposure_weights(
     exposures: pl.DataFrame, weights: pl.DataFrame
 ) -> pl.DataFrame:
+    # Ensure 'ticker' columns are strings and drop null tickers to avoid join dtype mismatches
+    if "ticker" in exposures.columns:
+        exposures = exposures.with_columns(pl.col("ticker").cast(pl.Utf8)).drop_nulls(
+            "ticker"
+        )
+    if "ticker" in weights.columns:
+        weights = weights.with_columns(pl.col("ticker").cast(pl.Utf8)).drop_nulls(
+            "ticker"
+        )
+
     positions_not_in_exposures = (
         weights.select("ticker")
         .join(exposures.select("ticker"), on="ticker", how="anti")
+        .select("ticker")
         .to_series()
         .to_list()
     )
+
     combo = exposures.join(weights, on="ticker", how="inner").drop(
         [
             col
