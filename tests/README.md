@@ -26,7 +26,8 @@ tests/
 
 ### Install test dependencies
 ```bash
-uv sync --all-extras
+python -m pip install --upgrade pip
+pip install -r requirements.txt -r requirements-dev.txt
 ```
 
 ### Run all tests
