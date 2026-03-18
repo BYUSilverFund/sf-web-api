@@ -55,19 +55,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements.txt
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v2
-        with:
-          version: "latest"
-
-      - name: Sync dependencies
+      - name: Install dependencies
         run: |
-          uv sync --all-extras
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
 
       - name: Test Procfile command, ensure app starts
         run: |
-          uv run uvicorn app.main:app --host=0.0.0.0 --port=5000 > uvicorn.log 2>&1 &
+          python -m uvicorn app.main:app --host=0.0.0.0 --port=5000 > uvicorn.log 2>&1 &
           APP_PID=$!
 
           for attempt in {1..30}; do
