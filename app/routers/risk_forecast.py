@@ -19,7 +19,9 @@ router = APIRouter()
     tags=["Risk Forecast"],
 )
 def all_fund_risk_forecasts(_claims=Depends(cognito_auth)) -> dict:
-    return all_funds_risk_forecast()
+    risk_forecast, positions_not_in_data = all_funds_risk_forecast()
+    risk_forecast["positions_not_in_data"] = positions_not_in_data
+    return risk_forecast
 
 
 @router.get(
@@ -30,7 +32,9 @@ def all_fund_risk_forecasts(_claims=Depends(cognito_auth)) -> dict:
     tags=["Risk Forecast"],
 )
 def fund_risk_forecasts(fund: str, _claims=Depends(cognito_auth)) -> dict:
-    return fund_risk_forecast(fund)
+    risk_forecast, positions_not_in_data = fund_risk_forecast(fund)
+    risk_forecast["positions_not_in_data"] = positions_not_in_data
+    return risk_forecast
 
 
 @router.get(
@@ -43,4 +47,6 @@ def fund_risk_forecasts(fund: str, _claims=Depends(cognito_auth)) -> dict:
 def fund_holding_risk_forecasts(
     fund: str, ticker: str, _claims=Depends(cognito_auth)
 ) -> dict:
-    return fund_holding_risk_forecast(fund, ticker)
+    risk_forecast, positions_not_in_data = fund_holding_risk_forecast(fund, ticker)
+    risk_forecast["positions_not_in_data"] = positions_not_in_data
+    return risk_forecast
