@@ -3,7 +3,7 @@ import polars as pl
 
 from app.db import engine
 from app.models.covariance_matrix import TickersList
-from app.services.covariance_matrix import get_covariance_matrix
+from app.services.covariance_matrix import get_covariance_matrix, get_tickers
 from app.utils import get_account_id_from_name
 
 
@@ -49,8 +49,17 @@ def _sort_tickers_and_weights(
     return sorted_tickers, sorted_weights
 
 
-def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
+def _compute_portfolio_risk(
+    tickers: list[str], weights: np.ndarray
+) -> tuple[dict, list[str]]:
     tickers, weights = _sort_tickers_and_weights(tickers, weights)
+
+    valid_cov_tickers = set(get_tickers())
+    positions_not_in_data = [t for t in tickers if t not in valid_cov_tickers]
+    filtered = [(t, w) for t, w in zip(tickers, weights) if t in valid_cov_tickers]
+    tickers = [t for t, _ in filtered]
+    weights = np.array([w for _, w in filtered], dtype=float)
+
     tickers_list = TickersList(tickers=tickers)
     cov_df = get_covariance_matrix(tickers_list)
 
@@ -101,27 +110,27 @@ def _compute_portfolio_risk(tickers: list[str], weights: np.ndarray) -> dict:
         "volatility": volatility,
         "beta": beta,
         "tracking_error": tracking_error,
-    }
+    }, positions_not_in_data
 
 
-def all_funds_risk_forecast() -> dict:
+def all_funds_risk_forecast() -> tuple[dict, list[str]]:
     weights_df = _all_fund_holding_weights()
     tickers = weights_df["ticker"].to_list()
     weights = np.array(weights_df["weight"], dtype=float)
     return _compute_portfolio_risk(tickers, weights)
 
 
-def fund_risk_forecast(fund: str) -> dict:
+def fund_risk_forecast(fund: str) -> tuple[dict, list[str]]:
     client_account_id = get_account_id_from_name(fund)
     weights_df = _fund_holding_weights(client_account_id)
     tickers = weights_df["ticker"].to_list()
     weights = np.array(weights_df["weight"], dtype=float)
-    portfolio_risk = _compute_portfolio_risk(tickers, weights)
+    portfolio_risk, positions_not_in_data = _compute_portfolio_risk(tickers, weights)
     portfolio_risk["fund"] = fund
-    return portfolio_risk
+    return portfolio_risk, positions_not_in_data
 
 
-def fund_holding_risk_forecast(fund: str, ticker: str) -> dict:
+def fund_holding_risk_forecast(fund: str, ticker: str) -> tuple[dict, list[str]]:
     client_account_id = get_account_id_from_name(fund)
     weights_df = _fund_holding_weights(client_account_id)
     tickers = weights_df["ticker"].to_list()
@@ -135,7 +144,9 @@ def fund_holding_risk_forecast(fund: str, ticker: str) -> dict:
     # Build a portfolio that is 100% in this holding for the rest of metrics
     single_holding_weights = np.zeros_like(sorted_weights, dtype=float)
     single_holding_weights[holding_idx] = 1.0
-    single_name_risk = _compute_portfolio_risk(sorted_tickers, single_holding_weights)
+    single_name_risk, positions_not_in_data = _compute_portfolio_risk(
+        sorted_tickers, single_holding_weights
+    )
 
     single_name_risk.update(
         {
@@ -144,4 +155,4 @@ def fund_holding_risk_forecast(fund: str, ticker: str) -> dict:
             "fund_weight": fund_weight,
         }
     )
-    return single_name_risk
+    return single_name_risk, positions_not_in_data
