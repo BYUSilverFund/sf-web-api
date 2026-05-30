@@ -64,20 +64,18 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
 
     n_days = len(df_wide["date"].unique())
 
-    total_return_rf = df_wide["cummulative_return_rf"].last() * 100
-    total_return_rf_annualized = total_return_rf * 252 / n_days
+    avg_daily_rf_return = df_wide["return_rf"].mean()
+    total_return_rf_annualized = avg_daily_rf_return * 252 * 100
 
     total_return = df_wide["cummulative_return"].last() * 100
-    total_return_annualized = total_return * 252 / n_days
+    avg_daily_return = df_wide["return"].mean()
+    total_return_annualized = avg_daily_return * 252 * 100
 
     adjusted_close = df_wide["adjusted_close"].last()
-    volatility = df_wide["return"].std() * (n_days**0.5) * 100
-    volatility_annualized = df_wide["return"].std() * (252**0.5) * 100
+    volatility = df_wide["return"].std() * (252**0.5) * 100
     dividends_per_share = df_wide["dividends_per_share"].sum()
     dividend_yield = dividends_per_share / adjusted_close * 100
-    sharpe_ratio = (
-        total_return_annualized - total_return_rf_annualized
-    ) / volatility_annualized
+    sharpe_ratio = (total_return_annualized - total_return_rf_annualized) / volatility
 
     min_date = bmk["date"].min()
     max_date = bmk["date"].max()

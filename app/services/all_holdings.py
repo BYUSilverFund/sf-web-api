@@ -126,20 +126,15 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
         )
         .unnest("coefficients")
         .rename({"xs_return_bmk": "beta", "const": "alpha"})
-        .with_columns(
-            (
-                pl.col("total_return")
-                - pl.col("total_return_rf")
-                - pl.col("beta")
-                * (pl.col("total_return_bmk") - pl.col("total_return_rf"))
-            ).alias("alpha")
-        )
         .with_columns(pl.col("dividends").truediv("value").alias("dividend_yield"))
         .with_columns(
             pl.col("volatility").fill_null(0),  # TODO: This was a quick fix -- Andrew
             pl.col("date").eq(max_date).alias("active"),
         )
-        .with_columns(pl.col("volatility").mul(pl.col("n_days").sqrt()))
+        .with_columns(
+            pl.col("volatility").mul(pl.lit(252).sqrt()),
+            pl.col("alpha").mul(252),
+        )
         .with_columns(
             pl.col("total_return", "volatility", "dividend_yield", "alpha").mul(100)
         )
