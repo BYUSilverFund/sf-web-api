@@ -96,6 +96,9 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             pl.col("cummulative_return").last().alias("total_return"),
             pl.col("cummulative_return_rf").last().alias("total_return_rf"),
             pl.col("cummulative_return_bmk").last().alias("total_return_bmk"),
+            pl.col("return").mean().alias("avg_daily_return"),
+            pl.col("return_rf").mean().alias("avg_daily_rf_return"),
+            pl.col("active_return").mean().alias("avg_daily_active_return"),
             pl.col("return").std().alias("volatility"),
             pl.col("dividends").sum(),
             pl.col("active_return").std().alias("tracking_error"),
@@ -106,26 +109,15 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         .unnest("coefficients")
         .rename({"xs_return_bmk": "beta", "const": "alpha"})
         .with_columns(
-            (
-                (pl.col("total_return") - pl.col("total_return_rf"))
-                - pl.col("beta")
-                * (pl.col("total_return_bmk") - pl.col("total_return_rf"))
-            ).alias("alpha")
-        )
-        .with_columns(
-            pl.col("tracking_error").mul(pl.col("n_days").sqrt()),
+            pl.col("alpha").mul(252).alias("alpha"),
             pl.col("tracking_error")
             .mul(pl.lit(252).sqrt())
             .alias("tracking_error_annualized"),
-            pl.col("total_return")
+            pl.col("avg_daily_return").mul(252).alias("total_return_annualized"),
+            pl.col("avg_daily_rf_return").mul(252).alias("total_return_rf_annualized"),
+            pl.col("avg_daily_active_return")
             .mul(252)
-            .truediv("n_days")
-            .alias("total_return_annualized"),
-            pl.col("total_return_rf")
-            .mul(252)
-            .truediv("n_days")
-            .alias("total_return_rf_annualized"),
-            pl.col("volatility").mul(pl.col("n_days").sqrt()),
+            .alias("annualized_active_return"),
             pl.col("volatility").mul(pl.lit(252).sqrt()).alias("volatility_annualized"),
         )
         .with_columns(
@@ -134,7 +126,7 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             .truediv("volatility_annualized")
             .alias("sharpe_ratio"),
             pl.col("dividends").truediv("value").alias("dividend_yield"),
-            pl.col("alpha")
+            pl.col("annualized_active_return")
             .truediv("tracking_error_annualized")
             .alias("information_ratio"),
         )
@@ -142,11 +134,13 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
             pl.col(
                 "total_return",
                 "total_return_rf",
-                "volatility",
-                "tracking_error",
                 "dividend_yield",
                 "alpha",
             ).mul(100)
+        )
+        .with_columns(
+            pl.col("volatility_annualized").mul(100).alias("volatility"),
+            pl.col("tracking_error_annualized").mul(100).alias("tracking_error"),
         )
         .select(
             "portfolio",

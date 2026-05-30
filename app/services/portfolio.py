@@ -89,30 +89,36 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     n_days = len(stk["date"].unique())
 
     total_return = stk["cummulative_return"].last() * 100
-    total_return_annualized = total_return * 252 / n_days
 
-    total_return_rf = df_wide["cummulative_return_rf"].last() * 100
-    total_return_rf_annualized = total_return_rf * 252 / n_days
+    avg_daily_return = stk["return"].mean()
+    total_return_annualized = avg_daily_return * 252 * 100
 
-    total_return_bmk = df_wide["cummulative_return_bmk"].last() * 100
+    avg_daily_rf_return = df_wide["return_rf"].mean()
+    total_return_rf_annualized = avg_daily_rf_return * 252 * 100
 
     model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
+
     beta = model.params["return_bmk"].item()
-    alpha = (total_return - total_return_rf) - beta * (
-        total_return_bmk - total_return_rf
-    )
+
+    daily_alpha = model.params["Intercept"].item()
+    alpha = daily_alpha * 252 * 100
 
     value = stk["value"].last()
-    volatility = stk["return"].std() * (n_days**0.5) * 100
-    volatility_annualized = stk["return"].std() * (252**0.5) * 100
+
+    volatility = stk["return"].std() * (252**0.5) * 100
+
     dividends = stk["dividends"].sum()
     dividend_yield = dividends / value * 100
-    sharpe_ratio = (
-        total_return_annualized - total_return_rf_annualized
-    ) / volatility_annualized
-    tracking_error = df_wide["return_active"].std() * (n_days**0.5) * 100
-    tracking_error_annualized = df_wide["return_active"].std() * (252**0.5) * 100
-    information_ratio = alpha / tracking_error_annualized
+
+    sharpe_ratio = (total_return_annualized - total_return_rf_annualized) / volatility
+
+    tracking_error = df_wide["return_active"].std() * (252**0.5) * 100
+
+    annualized_active_return = df_wide["return_active"].mean() * 252 * 100
+
+    information_ratio = (
+        annualized_active_return / tracking_error if tracking_error != 0 else 0
+    )
 
     min_date = stk["date"].min()
     max_date = stk["date"].max()
@@ -209,34 +215,29 @@ def get_portfolio_active_summary(request: PortfolioRequest) -> dict[str, any]:
 
     n_days = len(stk["date"].unique())
     total_return = df_wide["cummulative_return_active"].last() * 100
-    total_return_annualized = total_return * 252 / n_days
+    avg_daily_active_return = df_wide["return_active"].mean()
+    total_return_annualized = avg_daily_active_return * 252 * 100
 
-    total_return_rf = df_wide["cummulative_return_rf"].last() * 100
-    total_return_rf_annualized = total_return_rf * 252 / n_days
-    total_return_bmk = df_wide["cummulative_return_bmk"].last() * 100
+    avg_daily_rf_return = df_wide["return_rf"].mean()
+    total_return_rf_annualized = avg_daily_rf_return * 252 * 100
 
-    model = smf.ols("return_active ~ return_bmk", df_wide).fit()
+    model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
     beta = model.params["return_bmk"].item()
-    alpha = (total_return - total_return_rf) - beta * (
-        total_return_bmk - total_return_rf
-    )
+    daily_alpha = model.params["Intercept"].item()
+    alpha = daily_alpha * 252 * 100
 
     value = stk["value"].last() - bmk_holding_value
     active_return_std = df_wide["return_active"].std()
-    volatility = active_return_std * (n_days**0.5) * 100
-    volatility_annualized = active_return_std * (252**0.5) * 100
+    volatility = active_return_std * (252**0.5) * 100
     dividend_yield = dividends / value * 100
     sharpe_ratio = (
-        (total_return_annualized - total_return_rf_annualized) / volatility_annualized
-        if volatility_annualized != 0
+        (total_return_annualized - total_return_rf_annualized) / volatility
+        if volatility != 0
         else 0
     )
-    tracking_error = active_return_std * (n_days**0.5) * 100
-    tracking_error_annualized = active_return_std * (252**0.5) * 100
+    tracking_error = active_return_std * (252**0.5) * 100
     information_ratio = (
-        total_return_annualized / tracking_error_annualized
-        if tracking_error_annualized != 0
-        else 0
+        total_return_annualized / tracking_error if tracking_error != 0 else 0
     )
 
     max_date = stk["date"].max()
