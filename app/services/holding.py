@@ -106,20 +106,17 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     n_days = len(df_wide["date"].unique())
 
     total_return = side * (stk["cummulative_return"].last() * 100)
-    total_return_rf = df_wide["cummulative_return_rf"].last() * 100
-    total_return_bmk = df_wide["cummulative_return_bmk"].last() * 100
 
     model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
     beta = model.params["return_bmk"].item()
-    alpha = (total_return - total_return_rf) - beta * (
-        total_return_bmk - total_return_rf
-    )
+    daily_alpha = model.params["Intercept"].item()
+    alpha = daily_alpha * 252 * 100
 
     active = stk["date"].last() == max_date
     shares = stk["shares"].last()
     price = stk["price"].last()
     value = shares * price
-    volatility = stk["return"].std() * (n_days**0.5) * 100
+    volatility = stk["return"].std() * (252**0.5) * 100
     dividends = side * (stk["dividends"].sum())
     dividends_per_share = side * (stk["dividends_per_share"].sum())
     dividend_yield = dividends / value * 100
