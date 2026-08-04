@@ -142,3 +142,13 @@ pre-commit autoupdate
 ```bash
 git commit --no-verify -m "emergency commit"
 ```
+
+
+## Debugging Server Errors
+
+For 500 errors, CORS errors, or backend issues, connect to the EC2 instance and check `/var/log/web.stdout.log` first. You will often see CORS errors in the dev console, they are often not CORS errors and instead data issues. Most often rerunning an Airflow job will fix the issue.
+
+Use to watch live while reproducing the issue.
+```bash
+tail -n 100 -f /var/log/web.stdout.log
+```
