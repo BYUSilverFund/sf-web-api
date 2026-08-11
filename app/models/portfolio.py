@@ -47,26 +47,3 @@ class PortfolioTimeSeriesResponse(BaseModel):
     start: date
     end: date
     records: list[PortfolioRecord]
-
-
-class TradeRecord(BaseModel):
-    report_date: str
-    client_account_id: str
-    asset_class: str
-    sub_category: str
-    description: str
-    cusip: str
-    isin: str
-    symbol: str
-    trade_id: str
-    quantity: float
-    trade_price: float
-    ib_commission: float
-    buy_sell: str
-
-
-class PortfolioTradesResponse(BaseModel):
-    fund: str
-    start: date
-    end: date
-    records: list[TradeRecord]

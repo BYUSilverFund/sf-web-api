@@ -2,7 +2,8 @@ import polars as pl
 import statsmodels.formula.api as smf
 
 from app.db import engine
-from app.models.holding import HoldingRequest
+from app.models.holding import HoldingRequest, TradeRecord
+from app.models.portfolio import PortfolioRequest
 from app.utils import get_account_id_from_name
 
 
@@ -290,41 +291,73 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
     return result
 
 
-def get_trades(request: HoldingRequest) -> dict[str, any]:
+def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
+
+    ticker = getattr(request, "ticker", None)
+    ticker_filter = f"AND t.symbol = '{ticker}'" if ticker else ""
 
     trades = (
         pl.read_database(
             query=f"""
-                SELECT * 
-                FROM trades 
-                WHERE client_account_id = '{client_account_id}' 
-                    AND symbol = '{request.ticker}'
-                    AND report_date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY report_date
+                WITH latest_positions AS (
+                    SELECT symbol, mark_price AS current_price
+                    FROM positions
+                    WHERE client_account_id = '{client_account_id}'
+                        AND report_date = (
+                            SELECT MAX(report_date) 
+                            FROM positions 
+                            WHERE client_account_id = '{client_account_id}'
+                        )
+                )
+                SELECT 
+                    t.report_date,
+                    t.buy_sell,
+                    t.quantity,
+                    t.trade_price,
+                    t.symbol,
+                    p.current_price
+                FROM trades t
+                LEFT JOIN latest_positions p ON t.symbol = p.symbol
+                WHERE t.client_account_id = '{client_account_id}' 
+                    {ticker_filter}
+                    AND t.report_date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY t.report_date
                 ;
             """,
             connection=engine,
         )
-        .with_columns(pl.col("quantity", "trade_price").cast(pl.Float64))
+        .with_columns(
+            pl.col("quantity", "trade_price", "current_price").cast(pl.Float64)
+        )
         .select(
             pl.col("report_date").alias("date"),
             pl.col("buy_sell").alias("type"),
             pl.col("quantity").alias("shares"),
             pl.col("trade_price").alias("price"),
+            pl.col("symbol").alias("ticker"),
             pl.col("quantity").mul("trade_price").alias("value"),
+            pl.col("current_price"),
+        )
+        .group_by(["date", "price", "type", "ticker", "current_price"])
+        .agg(
+            pl.col("shares").sum(),
+            pl.col("value").sum(),
         )
         .sort("date", "value", descending=True)
-        .to_dicts()
     )
+
+    trade_records = [TradeRecord(**t) for t in trades.to_dicts()]
 
     result = {
         "fund": request.fund,
-        "ticker": request.ticker,
         "start": request.start,
         "end": request.end,
-        "trades": trades,
+        "trades": trade_records,
     }
+
+    if ticker:
+        result["ticker"] = ticker
 
     return result
 

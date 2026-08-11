@@ -4,6 +4,7 @@ import statsmodels.formula.api as smf
 from app.db import engine
 from app.models.portfolio import PortfolioRequest
 from app.utils import get_account_id_from_name
+from app.services.holding import get_trades
 
 
 def _get_portfolio_frames(
@@ -377,30 +378,4 @@ def get_portfolio_time_series_csv(request: PortfolioRequest) -> bytes:
 
 
 def get_portfolio_trades(request: PortfolioRequest) -> dict[str, any]:
-    client_account_id = get_account_id_from_name(request.fund)
-
-    trades = pl.read_database(
-        query=f"""
-                SELECT * 
-                FROM trades 
-                WHERE client_account_id = '{client_account_id}' 
-                    AND report_date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY report_date
-                ;
-            """,
-        connection=engine,
-    ).cast({"report_date": pl.String})
-
-    records = trades.to_dicts()
-
-    min_date = trades["report_date"].min()
-    max_date = trades["report_date"].max()
-
-    result = {
-        "fund": request.fund,
-        "start": min_date,
-        "end": max_date,
-        "records": records,
-    }
-
-    return result
+    return get_trades(request)
