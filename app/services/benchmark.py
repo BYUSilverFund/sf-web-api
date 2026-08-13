@@ -2,6 +2,7 @@ import polars as pl
 
 from app.db import engine
 from app.models.benchmark import BenchmarkRequest
+from app.utils import get_risk_free_timeseries
 
 
 def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
@@ -32,19 +33,7 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
         )
     )
 
-    rf = (
-        pl.read_database(
-            query=f"""
-                SELECT * 
-                FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date;
-            """,
-            connection=engine,
-        )
-        .with_columns(pl.col("return").cast(pl.Float64))
-        .sort("date")
-    )
+    rf = get_risk_free_timeseries(request.start, request.end)
 
     df_wide = (
         bmk.join(rf, on=["date"], suffix="_rf", how="left")

@@ -1,9 +1,13 @@
 import polars as pl
-import statsmodels.formula.api as smf
 
 from app.db import engine
 from app.models.portfolio import PortfolioRequest
-from app.utils import get_account_id_from_name
+from app.utils import (
+    get_account_id_from_name,
+    calculate_alpha_beta,
+    get_benchmark_timeseries,
+    get_risk_free_timeseries,
+)
 from app.services.holding import get_trades
 
 
@@ -33,31 +37,9 @@ def _get_portfolio_frames(
         .select("date", "value", "return", "cummulative_return", "dividends")
     )
 
-    bmk = pl.read_database(
-        query=f"""
-                SELECT
-                    date,
-                    return
-                FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date;
-            """,
-        connection=engine,
-    ).select("date", pl.col("return").cast(pl.Float64))
+    bmk = get_benchmark_timeseries(request.start, request.end)
 
-    rf = (
-        pl.read_database(
-            query=f"""
-                SELECT *
-                FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date;
-            """,
-            connection=engine,
-        )
-        .with_columns(pl.col("return").cast(pl.Float64))
-        .sort("date")
-    )
+    rf = get_risk_free_timeseries(request.start, request.end)
 
     return stk, bmk, rf
 
@@ -97,12 +79,7 @@ def get_portfolio_summary(request: PortfolioRequest) -> dict[str, any]:
     avg_daily_rf_return = df_wide["return_rf"].mean()
     total_return_rf_annualized = avg_daily_rf_return * 252 * 100
 
-    model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
-
-    beta = model.params["return_bmk"].item()
-
-    daily_alpha = model.params["Intercept"].item()
-    alpha = daily_alpha * 252 * 100
+    alpha, beta = calculate_alpha_beta(df_wide)
 
     value = stk["value"].last()
 
@@ -218,14 +195,10 @@ def get_portfolio_active_summary(request: PortfolioRequest) -> dict[str, any]:
     total_return = df_wide["cummulative_return_active"].last() * 100
     avg_daily_active_return = df_wide["return_active"].mean()
     total_return_annualized = avg_daily_active_return * 252 * 100
-
     avg_daily_rf_return = df_wide["return_rf"].mean()
     total_return_rf_annualized = avg_daily_rf_return * 252 * 100
 
-    model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
-    beta = model.params["return_bmk"].item()
-    daily_alpha = model.params["Intercept"].item()
-    alpha = daily_alpha * 252 * 100
+    alpha, beta = calculate_alpha_beta(df_wide)
 
     value = stk["value"].last() - bmk_holding_value
     active_return_std = df_wide["return_active"].std()
