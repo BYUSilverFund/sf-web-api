@@ -3,7 +3,11 @@ import polars_ols as pls  # noqa: F401
 
 from app.db import engine
 from app.models.all_portfolios import AllPortfoliosRequest
-from app.utils import account_id_to_name
+from app.utils import (
+    account_id_to_name,
+    get_benchmark_timeseries,
+    get_risk_free_timeseries,
+)
 
 
 def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
@@ -37,31 +41,9 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
         )
     )
 
-    bmk = pl.read_database(
-        query=f"""
-                SELECT 
-                    date,
-                    return
-                FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date;
-            """,
-        connection=engine,
-    ).select("date", pl.col("return").cast(pl.Float64))
+    bmk = get_benchmark_timeseries(request.start, request.end)
 
-    rf = (
-        pl.read_database(
-            query=f"""
-                SELECT * 
-                FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date;
-            """,
-            connection=engine,
-        )
-        .with_columns(pl.col("return").cast(pl.Float64))
-        .sort("date")
-    )
+    rf = get_risk_free_timeseries(request.start, request.end)
 
     portfolios = (
         stk.join(rf, on="date", how="left", suffix="_rf")
