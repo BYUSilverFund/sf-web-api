@@ -1,9 +1,10 @@
 from datetime import date
 
 from pydantic import BaseModel, ConfigDict
+from app.models.portfolio import PortfolioRequest
 
 
-class HoldingRequest(BaseModel):
+class HoldingRequest(PortfolioRequest):
     model_config = ConfigDict(
         json_schema_extra={
             "example": {
@@ -15,10 +16,7 @@ class HoldingRequest(BaseModel):
         }
     )
 
-    fund: str
-    ticker: str
-    start: date
-    end: date
+    ticker: str | None = None
 
 
 class HoldingSummaryResponse(BaseModel):
@@ -77,17 +75,18 @@ class DividendsResponse(BaseModel):
     dividends: list[DividendsRecord]
 
 
-class TradesRecord(BaseModel):
+class TradeRecord(BaseModel):
     date: date
     type: str
     shares: float
     price: float
     value: float
+    ticker: str
+    current_price: float | None = None
 
 
 class TradesResponse(BaseModel):
     fund: str
-    ticker: str
     start: date
     end: date
-    trades: list[TradesRecord]
+    trades: list[TradeRecord]

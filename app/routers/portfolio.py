@@ -7,8 +7,8 @@ from app.models.portfolio import (
     PortfolioRequest,
     PortfolioSummaryResponse,
     PortfolioTimeSeriesResponse,
-    PortfolioTradesResponse,
 )
+from app.models.holding import TradesResponse
 from app.services.portfolio import (
     get_portfolio_active_summary,
     get_portfolio_summary,
@@ -85,7 +85,7 @@ def download_portfolio_time_series_csv(request: PortfolioRequest):
 
 @router.post(
     "/trades",
-    response_model=PortfolioTradesResponse,
+    response_model=TradesResponse,
     summary="Get Fund Trades",
     description="Returns trades for a given fund over a date range.",
     response_description="Trades for the requested fund.",
@@ -93,5 +93,5 @@ def download_portfolio_time_series_csv(request: PortfolioRequest):
 )
 def portfolio_trades(
     portfolio_request: PortfolioRequest,
-) -> PortfolioTradesResponse:
-    return PortfolioTradesResponse(**get_portfolio_trades(portfolio_request))
+) -> TradesResponse:
+    return TradesResponse(**get_portfolio_trades(portfolio_request))
