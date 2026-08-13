@@ -300,15 +300,10 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
     trades = (
         pl.read_database(
             query=f"""
-                WITH latest_positions AS (
-                    SELECT symbol, mark_price AS current_price
-                    FROM positions
-                    WHERE client_account_id = '{client_account_id}'
-                        AND report_date = (
-                            SELECT MAX(report_date) 
-                            FROM positions 
-                            WHERE client_account_id = '{client_account_id}'
-                        )
+                WITH latest_prices AS (
+                    SELECT DISTINCT ON (symbol) symbol, mark_price AS current_price
+                    FROM historical_data
+                    ORDER BY symbol, report_date DESC
                 )
                 SELECT 
                     t.report_date,
@@ -316,9 +311,9 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
                     t.quantity,
                     t.trade_price,
                     t.symbol,
-                    p.current_price
+                    h.current_price
                 FROM trades t
-                LEFT JOIN latest_positions p ON t.symbol = p.symbol
+                LEFT JOIN latest_prices h ON t.symbol = h.symbol
                 WHERE t.client_account_id = '{client_account_id}' 
                     {ticker_filter}
                     AND t.report_date BETWEEN '{request.start}' AND '{request.end}'
