@@ -82,6 +82,7 @@ class TradeRecord(BaseModel):
     price: float
     value: float
     ticker: str
+    alpha: float | None = None
     current_price: float | None = None
 
 
