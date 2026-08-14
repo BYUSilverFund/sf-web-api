@@ -1,10 +1,14 @@
 import polars as pl
-import statsmodels.formula.api as smf
 
 from app.db import engine
 from app.models.holding import HoldingRequest, TradeRecord
 from app.models.portfolio import PortfolioRequest
-from app.utils import get_account_id_from_name
+from app.utils import (
+    get_account_id_from_name,
+    calculate_alpha_beta,
+    get_benchmark_timeseries,
+    get_risk_free_timeseries,
+)
 
 
 def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
@@ -49,27 +53,9 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         )
     )
 
-    bmk = pl.read_database(
-        query=f"""
-                SELECT 
-                    date,
-                    return
-                FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date;
-            """,
-        connection=engine,
-    ).select("date", pl.col("return").cast(pl.Float64))
+    bmk = get_benchmark_timeseries(request.start, request.end)
 
-    rf = pl.read_database(
-        query=f"""
-                SELECT * 
-                FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date;
-            """,
-        connection=engine,
-    ).with_columns(pl.col("return").cast(pl.Float64))
+    rf = get_risk_free_timeseries(request.start, request.end)
 
     df_wide = (
         stk.join(bmk, on=["date"], suffix="_bmk", how="left")
@@ -108,10 +94,7 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
 
     total_return = side * (stk["cummulative_return"].last() * 100)
 
-    model = smf.ols("return_stk ~ return_bmk", df_wide).fit()
-    beta = model.params["return_bmk"].item()
-    daily_alpha = model.params["Intercept"].item()
-    alpha = daily_alpha * 252 * 100
+    alpha, beta = calculate_alpha_beta(df_wide)
 
     active = stk["date"].last() == max_date
     shares = stk["shares"].last()
@@ -342,6 +325,87 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
         .sort("date", "value", descending=True)
     )
 
+    if trades.is_empty():
+        trade_records = []
+    else:
+        min_date = trades["date"].min()
+        max_date = request.end
+
+        unique_tickers = trades["ticker"].unique().to_list()
+        ticker_in_clause = ", ".join(f"'{t}'" for t in unique_tickers)
+
+        stk_all = pl.read_database(
+            query=f"""
+                    SELECT report_date as date, symbol as ticker, daily_return as return
+                    FROM historical_data
+                    WHERE symbol IN ({ticker_in_clause})
+                        AND report_date BETWEEN '{min_date}' AND '{max_date}'
+                    ORDER BY date;
+                """,
+            connection=engine,
+        ).with_columns(pl.col("return").cast(pl.Float64))
+
+        bmk_all = get_benchmark_timeseries(min_date, max_date)
+        rf_all = get_risk_free_timeseries(min_date, max_date)
+
+        unique_combinations = trades.select("ticker", "date").unique().to_dicts()
+        alpha_map = {}
+
+        for combo in unique_combinations:
+            t_symbol = combo["ticker"]
+            t_date = combo["date"]
+
+            stk_sub = stk_all.filter(
+                (pl.col("ticker") == t_symbol) & (pl.col("date") >= t_date)
+            )
+            bmk_sub = bmk_all.filter(pl.col("date") >= t_date)
+            rf_sub = rf_all.filter(pl.col("date") >= t_date)
+
+            df_wide = (
+                stk_sub.join(bmk_sub, on=["date"], suffix="_bmk", how="left")
+                .join(rf_sub, on=["date"], suffix="_rf", how="left")
+                .select(
+                    "date",
+                    "ticker",
+                    pl.col("return").alias("return_stk"),
+                    "return_bmk",
+                    pl.col("return_rf").fill_null(
+                        strategy="forward"
+                    ),  # Fill last value
+                )
+                .sort("date")
+                .with_columns(pl.col("return_stk", "return_bmk").sub("return_rf"))
+            )
+
+            alpha = None
+            if len(df_wide) >= 2:
+                try:
+                    alpha, _ = calculate_alpha_beta(df_wide)
+                except Exception as e:
+                    print(e)
+            else:
+                print("not enough data to get alpha for", t_symbol, t_date)
+
+            alpha_map[(t_symbol, t_date)] = alpha
+
+        trade_dicts = trades.to_dicts()
+        for t in trade_dicts:
+            t["alpha"] = alpha_map.get((t["ticker"], t["date"]), None)
+
+        trade_records = [TradeRecord(**t) for t in trade_dicts]
+
+    result = {
+        "fund": request.fund,
+        "start": request.start,
+        "end": request.end,
+        "trades": trade_records,
+    }
+
+    if ticker:
+        result["ticker"] = ticker
+
+    return result
+
 
 def get_recent_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
@@ -367,9 +431,7 @@ def get_recent_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, a
             """,
             connection=engine,
         )
-        .with_columns(
-            pl.col("quantity", "trade_price").cast(pl.Float64)
-        )
+        .with_columns(pl.col("quantity", "trade_price").cast(pl.Float64))
         .select(
             pl.col("report_date").alias("date"),
             pl.col("buy_sell").alias("type"),
@@ -400,7 +462,6 @@ def get_recent_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, a
         result["ticker"] = ticker
 
     return result
-
 
 
 def get_portfolio_time_series_csv(request: HoldingRequest) -> bytes:
