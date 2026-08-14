@@ -48,14 +48,6 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
             pl.col("return_rf").fill_null(strategy="forward"),  # Fill last value
             pl.col("return").sub("return_bmk").alias("return_active"),
         )
-        .with_columns(
-            pl.col("return_rf").add(1).cum_prod().sub(1).alias("cummulative_return_rf"),
-            pl.col("return_bmk")
-            .add(1)
-            .cum_prod()
-            .sub(1)
-            .alias("cummulative_return_bmk"),
-        )
         .sort("date")
         .with_columns(pl.col("return_stk", "return_bmk").sub("return_rf"))
     )
