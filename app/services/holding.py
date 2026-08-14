@@ -342,6 +342,51 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
         .sort("date", "value", descending=True)
     )
 
+
+def get_recent_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
+    client_account_id = get_account_id_from_name(request.fund)
+
+    ticker = getattr(request, "ticker", None)
+    ticker_filter = f"AND t.symbol = '{ticker}'" if ticker else ""
+
+    trades = (
+        pl.read_database(
+            query=f"""
+                SELECT 
+                    t.report_date,
+                    t.buy_sell,
+                    t.quantity,
+                    t.trade_price,
+                    t.symbol
+                FROM trades t
+                WHERE t.client_account_id = '{client_account_id}' 
+                    {ticker_filter}
+                    AND t.report_date BETWEEN '{request.start}' AND '{request.end}'
+                ORDER BY t.report_date DESC
+                ;
+            """,
+            connection=engine,
+        )
+        .with_columns(
+            pl.col("quantity", "trade_price").cast(pl.Float64)
+        )
+        .select(
+            pl.col("report_date").alias("date"),
+            pl.col("buy_sell").alias("type"),
+            pl.col("quantity").alias("shares"),
+            pl.col("trade_price").alias("price"),
+            pl.col("symbol").alias("ticker"),
+            pl.col("quantity").mul("trade_price").alias("value"),
+        )
+        .group_by(["date", "price", "type", "ticker"])
+        .agg(
+            pl.col("shares").sum(),
+            pl.col("value").sum(),
+        )
+        .sort("date", descending=True)
+        .head(5)
+    )
+
     trade_records = [TradeRecord(**t) for t in trades.to_dicts()]
 
     result = {
@@ -355,6 +400,7 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
         result["ticker"] = ticker
 
     return result
+
 
 
 def get_portfolio_time_series_csv(request: HoldingRequest) -> bytes:

@@ -15,11 +15,23 @@ from app.services.holding import (
     get_holding_summary,
     get_holding_time_series,
     get_portfolio_time_series_csv,
+    get_recent_trades,
     get_trades,
 )
 
-
 router = APIRouter()
+
+
+@router.post(
+    "/recent-trades",
+    response_model=TradesResponse,
+    summary="Get Recent Trades",
+    description="Returns the 5 most recent trades for a fund/ticker over a date range without calculating alpha.",
+    response_description="Recent trades for the requested holding.",
+    tags=["Holding"],
+)
+def recent_trades(holding_request: HoldingRequest) -> TradesResponse:
+    return TradesResponse(**get_recent_trades(holding_request))
 
 
 @router.post(
