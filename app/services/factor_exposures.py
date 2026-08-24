@@ -24,16 +24,17 @@ def get_factor_exposures(holding: str | None = None) -> pl.DataFrame:
 
 def fund_holding_weights(client_account_id: str) -> pl.DataFrame:
     weights = pl.read_database(
-        query=f"""
+        query="""
             SELECT
                 client_account_id,
                 ticker,
                 weight
             FROM holding_returns
             WHERE date = (select max(date) from holding_returns)
-                AND client_account_id = '{client_account_id}'
+                AND client_account_id = :account_id
             """,
         connection=engine,
+        execute_options={"parameters": {"account_id": client_account_id}},
     )
     return pl.DataFrame(weights)
 
@@ -41,16 +42,17 @@ def fund_holding_weights(client_account_id: str) -> pl.DataFrame:
 def all_fund_holding_weights() -> pl.DataFrame:
     quant_paper_id = get_account_id_from_name("quant_paper")
     weights = pl.read_database(
-        query=f"""
+        query="""
             SELECT 
                 ticker,
                 SUM(value) / SUM(SUM(value)) OVER () AS weight
             FROM holding_returns
             WHERE date = (SELECT MAX(date) FROM holding_returns)
-                AND client_account_id != '{quant_paper_id}'
+                AND client_account_id != :quant_paper_id
             GROUP BY ticker;
             """,
         connection=engine,
+        execute_options={"parameters": {"quant_paper_id": quant_paper_id}},
     )
     return pl.DataFrame(weights)
 

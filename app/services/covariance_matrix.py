@@ -41,13 +41,14 @@ def get_fund_tickers(request: Fund) -> list[str]:
 
     return (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT DISTINCT ticker
                 FROM holding_returns
-                WHERE client_account_id = '{client_account_id}'
-                AND date = (SELECT MAX(date) FROM holding_returns WHERE client_account_id = '{client_account_id}');
+                WHERE client_account_id = :account_id
+                AND date = (SELECT MAX(date) FROM holding_returns WHERE client_account_id = :account_id);
             """,
             connection=engine,
+            execute_options={"parameters": {"account_id": client_account_id}},
         )["ticker"]
         .unique()
         .sort()

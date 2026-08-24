@@ -18,15 +18,21 @@ def _get_portfolio_frames(
 
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT *
                 FROM fund_returns
-                WHERE client_account_id = '{client_account_id}'
-                    AND date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE client_account_id = :account_id
+                    AND date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
         .with_columns(pl.col("return").replace({-1: 0}))
@@ -129,15 +135,21 @@ def get_portfolio_active_summary(request: PortfolioRequest) -> dict[str, any]:
 
     # get the holding value for the benchmark on the end date
     bmk_holding_value = pl.read_database(
-        query=f"""
+        query="""
             SELECT value
             FROM holding_returns
-            WHERE client_account_id = '{client_account_id}'
-                AND date = '{end_date}'
+            WHERE client_account_id = :account_id
+                AND date = :end_date
                 AND ticker = 'IWV'
             LIMIT 1
         """,
         connection=engine,
+        execute_options={
+            "parameters": {
+                "account_id": client_account_id,
+                "end_date": end_date,
+            }
+        },
     )
 
     # check to make sure it has a value (if not there is no holding value for the benchmark, so we will assume 0). convert df to float type
@@ -147,14 +159,21 @@ def get_portfolio_active_summary(request: PortfolioRequest) -> dict[str, any]:
         bmk_holding_value = float(bmk_holding_value["value"].item())
 
     dividends = pl.read_database(
-        query=f"""
-            SELECT sum(net_amount) AS dividends  FROM dividends
+        query="""
+            SELECT sum(net_amount) AS dividends FROM dividends
             WHERE symbol != 'IWV'
-                AND ex_date BETWEEN '{request.start}' AND '{request.end}'
+                AND ex_date BETWEEN :start AND :end
             GROUP BY client_account_id
-            HAVING client_account_id = '{client_account_id}'
+            HAVING client_account_id = :account_id
         """,
         connection=engine,
+        execute_options={
+            "parameters": {
+                "account_id": client_account_id,
+                "start": request.start,
+                "end": request.end,
+            }
+        },
     )
 
     if dividends.is_empty():
@@ -241,15 +260,21 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
 
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM fund_returns 
-                WHERE client_account_id = '{client_account_id}' 
-                    AND date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE client_account_id = :account_id 
+                    AND date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
         .with_columns(pl.col("return").replace({-1: 0}))
@@ -262,15 +287,18 @@ def get_portfolio_time_series(request: PortfolioRequest) -> dict[str, any]:
 
     bmk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT 
                     date,
                     return
                 FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("return").cast(pl.Float64))
         .select(
@@ -327,15 +355,18 @@ def get_portfolio_time_series_csv(request: PortfolioRequest) -> bytes:
 
     rf = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT
                     date,
                     return AS risk_free_return
                 FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("risk_free_return").cast(pl.Float64))
         .sort("date")

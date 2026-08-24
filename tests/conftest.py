@@ -84,7 +84,7 @@ def mock_fund_db_read_database(
 ):
     """Mock pl.read_database to return sample data based on query."""
 
-    def read_database_side_effect(query, connection):
+    def read_database_side_effect(query, connection=None, *args, **kwargs):
         if "all_fund_returns" in query:
             return sample_fund_returns_df
         elif "benchmark" in query:

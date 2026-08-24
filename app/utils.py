@@ -45,28 +45,30 @@ def calculate_alpha_beta(df: pl.DataFrame) -> tuple[float, float]:
 
 def get_benchmark_timeseries(start: date, end: date) -> pl.DataFrame:
     return pl.read_database(
-        query=f"""
+        query="""
                 SELECT 
                     date,
                     return
                 FROM benchmark
-                WHERE date BETWEEN '{start}' AND '{end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
         connection=engine,
+        execute_options={"parameters": {"start": start, "end": end}},
     ).select("date", pl.col("return").cast(pl.Float64))
 
 
 def get_risk_free_timeseries(start: date, end: date) -> pl.DataFrame:
     return (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM risk_free_rate
-                WHERE date BETWEEN '{start}' AND '{end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={"parameters": {"start": start, "end": end}},
         )
         .with_columns(pl.col("return").cast(pl.Float64))
         .sort("date")

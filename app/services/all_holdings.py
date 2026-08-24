@@ -15,15 +15,21 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
 
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM holding_returns 
-                WHERE client_account_id = '{client_account_id}'
-                    AND date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE client_account_id = :account_id
+                    AND date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(
             pl.col("return", "dividends_per_share", "value", "price", "shares").cast(
@@ -55,14 +61,11 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
 
     rf = get_risk_free_timeseries(request.start, request.end)
 
-    max_date = pl.read_database(
-        query=f"""
-                SELECT MAX(date)
-                FROM holding_returns
-                WHERE date BETWEEN '{request.start}' AND '{request.end}';
-            """,
-        connection=engine,
-    )["max"].item()
+    max_date = (
+        bmk["date"].max()
+        if len(bmk) > 0
+        else (stk["date"].max() if len(stk) > 0 else request.end)
+    )
 
     holdings = (
         stk.join(rf, on="date", how="left", suffix="_rf")
@@ -156,14 +159,21 @@ def get_all_holdings_time_series(request: AllHoldingsRequest) -> dict[str, any]:
 
     df = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT *
                 FROM positions
-                WHERE client_account_id = '{client_account_id}'
-                  AND report_date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE client_account_id = :account_id
+                  AND report_date BETWEEN :start AND :end
                 ORDER BY symbol, report_date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(
             pl.col(
@@ -200,14 +210,21 @@ def get_all_holdings_time_series_csv(request: AllHoldingsRequest) -> bytes:
 
     df = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT *
                 FROM holding_returns
-                WHERE client_account_id = '{client_account_id}'
-                  AND date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE client_account_id = :account_id
+                  AND date BETWEEN :start AND :end
                 ORDER BY ticker, date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(
             pl.col(
@@ -240,15 +257,18 @@ def get_all_holdings_time_series_csv(request: AllHoldingsRequest) -> bytes:
 
     rf = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT
                     date,
                     return AS risk_free_return
                 FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("risk_free_return").cast(pl.Float64))
         .sort("date")
