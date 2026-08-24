@@ -79,14 +79,11 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
         .with_columns(pl.col("return_stk", "return_bmk").sub("return_rf"))
     )
 
-    max_date = pl.read_database(
-        query=f"""
-                SELECT MAX(date)
-                FROM holding_returns
-                WHERE date BETWEEN '{request.start}' AND '{request.end}';
-            """,
-        connection=engine,
-    )["max"].item()
+    max_date = (
+        bmk["date"].max()
+        if len(bmk) > 0
+        else (stk["date"].max() if len(stk) > 0 else request.end)
+    )
 
     side = stk["shares"].sign().last()
 
