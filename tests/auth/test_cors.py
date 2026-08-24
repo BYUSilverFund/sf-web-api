@@ -125,7 +125,7 @@ class TestRequestValidation:
     ):
         """Test that extra fields in request are handled gracefully."""
 
-        def read_database_side_effect(query, connection):
+        def read_database_side_effect(query, connection=None, *args, **kwargs):
             if "all_fund_returns" in query:
                 return sample_fund_returns_df
             elif "benchmark" in query:

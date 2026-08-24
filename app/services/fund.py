@@ -12,14 +12,16 @@ from app.utils import (
 def get_fund_summary(request: FundRequest) -> dict[str, any]:
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM all_fund_returns 
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
         .with_columns(
@@ -106,14 +108,16 @@ def get_fund_summary(request: FundRequest) -> dict[str, any]:
 def get_fund_time_series(request: FundRequest) -> dict[str, any]:
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM all_fund_returns 
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
         .with_columns(
@@ -130,15 +134,18 @@ def get_fund_time_series(request: FundRequest) -> dict[str, any]:
 
     bmk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT 
                     date,
                     return
                 FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("return").cast(pl.Float64))
         .select(
@@ -194,15 +201,18 @@ def get_all_fund_time_series_csv(request: FundRequest) -> bytes:
 
     rf = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT
                     date,
                     return AS risk_free_return
                 FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("risk_free_return").cast(pl.Float64))
         .sort("date")

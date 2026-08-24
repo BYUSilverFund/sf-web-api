@@ -8,17 +8,20 @@ from app.utils import get_risk_free_timeseries
 def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
     bmk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT 
                     date,
                     adjusted_close,
                     return,
                     dividends_per_share
                 FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(
             pl.col("adjusted_close", "return", "dividends_per_share").cast(pl.Float64)
@@ -87,18 +90,20 @@ def get_benchmark_summary(request: BenchmarkRequest) -> dict[str, any]:
 def get_benchmark_time_series(request: BenchmarkRequest) -> dict[str, any]:
     bmk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT 
                     date,
                     adjusted_close,
                     return,
                     dividends_per_share
                 FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
-                ;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(
             pl.col("adjusted_close", "return", "dividends_per_share").cast(pl.Float64)

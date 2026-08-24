@@ -9,31 +9,33 @@ from app.utils import get_account_id_from_name
 
 def _fund_holding_weights(client_account_id: str) -> pl.DataFrame:
     return pl.read_database(
-        query=f"""
+        query="""
             SELECT
                 ticker,
                 weight
             FROM holding_returns
             WHERE date = (SELECT MAX(date) FROM holding_returns)
-              AND client_account_id = '{client_account_id}';
+              AND client_account_id = :account_id;
         """,
         connection=engine,
+        execute_options={"parameters": {"account_id": client_account_id}},
     )
 
 
 def _all_fund_holding_weights() -> pl.DataFrame:
     quant_paper_id = get_account_id_from_name("quant_paper")
     return pl.read_database(
-        query=f"""
+        query="""
             SELECT
                 ticker,
                 SUM(value) / SUM(SUM(value)) OVER () AS weight
             FROM holding_returns
             WHERE date = (SELECT MAX(date) FROM holding_returns)
-              AND client_account_id != '{quant_paper_id}'
+              AND client_account_id != :quant_paper_id
             GROUP BY ticker;
         """,
         connection=engine,
+        execute_options={"parameters": {"quant_paper_id": quant_paper_id}},
     )
 
 

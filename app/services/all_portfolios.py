@@ -13,14 +13,16 @@ from app.utils import (
 def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM fund_returns 
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
         .with_columns(pl.col("return").replace({-1: 0}))
@@ -158,13 +160,16 @@ def get_all_portfolios_summary(request: AllPortfoliosRequest) -> dict[str, any]:
 def get_all_portfolios_timeseries_csv(request: AllPortfoliosRequest) -> bytes:
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT *
                 FROM fund_returns
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("value", "return", "dividends").cast(pl.Float64))
         .with_columns(pl.col("return").replace({-1: 0}))
@@ -191,26 +196,28 @@ def get_all_portfolios_timeseries_csv(request: AllPortfoliosRequest) -> bytes:
     )
 
     bmk = pl.read_database(
-        query=f"""
+        query="""
                 SELECT date, return
                 FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
         connection=engine,
+        execute_options={"parameters": {"start": request.start, "end": request.end}},
     ).select(
         "date",
         pl.col("return").cast(pl.Float64).alias("benchmark_return"),
     )
 
     rf = pl.read_database(
-        query=f"""
+        query="""
                 SELECT date, return
                 FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
         connection=engine,
+        execute_options={"parameters": {"start": request.start, "end": request.end}},
     ).select(
         "date",
         pl.col("return").cast(pl.Float64).alias("risk_free_return"),

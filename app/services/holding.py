@@ -16,16 +16,23 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
 
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM holding_returns 
-                WHERE client_account_id = '{client_account_id}' 
-                    AND ticker = '{request.ticker}'
-                    AND date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE client_account_id = :account_id 
+                    AND ticker = :ticker
+                    AND date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "ticker": request.ticker,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(
             pl.col(
@@ -132,16 +139,23 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
 
     stk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM holding_returns 
-                WHERE client_account_id = '{client_account_id}' 
-                    AND ticker = '{request.ticker}'
-                    AND date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE client_account_id = :account_id 
+                    AND ticker = :ticker
+                    AND date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "ticker": request.ticker,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(
             pl.col(
@@ -175,15 +189,18 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
 
     bmk = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT 
                     date,
                     return
                 FROM benchmark
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("return").cast(pl.Float64))
         .select(
@@ -240,16 +257,23 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
 
     dividends = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT * 
                 FROM holding_returns 
-                WHERE client_account_id = '{client_account_id}' 
-                    AND ticker = '{request.ticker}'
-                    AND date BETWEEN '{request.start}' AND '{request.end}'
-                ORDER BY date
-                ;
+                WHERE client_account_id = :account_id 
+                    AND ticker = :ticker
+                    AND date BETWEEN :start AND :end
+                ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "account_id": client_account_id,
+                    "ticker": request.ticker,
+                    "start": request.start,
+                    "end": request.end,
+                }
+            },
         )
         .with_columns(
             pl.col("shares", "dividends", "dividends_per_share").cast(pl.Float64)
@@ -275,7 +299,15 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
 
     ticker = getattr(request, "ticker", None)
-    ticker_filter = f"AND t.symbol = '{ticker}'" if ticker else ""
+    ticker_clause = "AND t.symbol = :ticker" if ticker else ""
+
+    params = {
+        "account_id": client_account_id,
+        "start": request.start,
+        "end": request.end,
+    }
+    if ticker:
+        params["ticker"] = ticker
 
     trades = (
         pl.read_database(
@@ -294,13 +326,14 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
                     h.current_price
                 FROM trades t
                 LEFT JOIN latest_prices h ON t.symbol = h.symbol
-                WHERE t.client_account_id = '{client_account_id}' 
-                    {ticker_filter}
-                    AND t.report_date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE t.client_account_id = :account_id 
+                    {ticker_clause}
+                    AND t.report_date BETWEEN :start AND :end
                 ORDER BY t.report_date
                 ;
             """,
             connection=engine,
+            execute_options={"parameters": params},
         )
         .with_columns(
             pl.col("quantity", "trade_price", "current_price").cast(pl.Float64)
@@ -329,17 +362,23 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
         max_date = request.end
 
         unique_tickers = trades["ticker"].unique().to_list()
-        ticker_in_clause = ", ".join(f"'{t}'" for t in unique_tickers)
 
         stk_all = pl.read_database(
-            query=f"""
+            query="""
                     SELECT report_date as date, symbol as ticker, daily_return as return
                     FROM historical_data
-                    WHERE symbol IN ({ticker_in_clause})
-                        AND report_date BETWEEN '{min_date}' AND '{max_date}'
+                    WHERE symbol = ANY(:tickers)
+                        AND report_date BETWEEN :min_date AND :max_date
                     ORDER BY date;
                 """,
             connection=engine,
+            execute_options={
+                "parameters": {
+                    "tickers": unique_tickers,
+                    "min_date": min_date,
+                    "max_date": max_date,
+                }
+            },
         ).with_columns(pl.col("return").cast(pl.Float64))
 
         bmk_all = get_benchmark_timeseries(min_date, max_date)
@@ -408,7 +447,15 @@ def get_recent_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, a
     client_account_id = get_account_id_from_name(request.fund)
 
     ticker = getattr(request, "ticker", None)
-    ticker_filter = f"AND t.symbol = '{ticker}'" if ticker else ""
+    ticker_clause = "AND t.symbol = :ticker" if ticker else ""
+
+    params = {
+        "account_id": client_account_id,
+        "start": request.start,
+        "end": request.end,
+    }
+    if ticker:
+        params["ticker"] = ticker
 
     trades = (
         pl.read_database(
@@ -420,13 +467,14 @@ def get_recent_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, a
                     t.trade_price,
                     t.symbol
                 FROM trades t
-                WHERE t.client_account_id = '{client_account_id}' 
-                    {ticker_filter}
-                    AND t.report_date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE t.client_account_id = :account_id 
+                    {ticker_clause}
+                    AND t.report_date BETWEEN :start AND :end
                 ORDER BY t.report_date DESC
                 ;
             """,
             connection=engine,
+            execute_options={"parameters": params},
         )
         .with_columns(pl.col("quantity", "trade_price").cast(pl.Float64))
         .select(
@@ -467,15 +515,18 @@ def get_portfolio_time_series_csv(request: HoldingRequest) -> bytes:
 
     rf = (
         pl.read_database(
-            query=f"""
+            query="""
                 SELECT
                     date,
                     return AS risk_free_return
                 FROM risk_free_rate
-                WHERE date BETWEEN '{request.start}' AND '{request.end}'
+                WHERE date BETWEEN :start AND :end
                 ORDER BY date;
             """,
             connection=engine,
+            execute_options={
+                "parameters": {"start": request.start, "end": request.end}
+            },
         )
         .with_columns(pl.col("risk_free_return").cast(pl.Float64))
         .sort("date")
