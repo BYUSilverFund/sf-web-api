@@ -84,6 +84,7 @@ class TradeRecord(BaseModel):
     ticker: str
     alpha: float | None = None
     current_price: float | None = None
+    benchmark_price: float | None = None
 
 
 class TradesResponse(BaseModel):

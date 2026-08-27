@@ -323,9 +323,12 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
                     t.quantity,
                     t.trade_price,
                     t.symbol,
+                    t.benchmark_price,
+                    b.adjusted_close AS benchmark_close,
                     h.current_price
                 FROM trades t
                 LEFT JOIN latest_prices h ON t.symbol = h.symbol
+                LEFT JOIN benchmark b ON t.report_date = b.date
                 WHERE t.client_account_id = :account_id 
                     {ticker_clause}
                     AND t.report_date BETWEEN :start AND :end
@@ -336,7 +339,13 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
             execute_options={"parameters": params},
         )
         .with_columns(
-            pl.col("quantity", "trade_price", "current_price").cast(pl.Float64)
+            pl.col(
+                "quantity",
+                "trade_price",
+                "current_price",
+                "benchmark_price",
+                "benchmark_close",
+            ).cast(pl.Float64)
         )
         .select(
             pl.col("report_date").alias("date"),
@@ -346,8 +355,20 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
             pl.col("symbol").alias("ticker"),
             pl.col("quantity").mul("trade_price").alias("value"),
             pl.col("current_price"),
+            pl.col("benchmark_price"),
+            pl.col("benchmark_close"),
         )
-        .group_by(["date", "price", "type", "ticker", "current_price"])
+        .group_by(
+            [
+                "date",
+                "price",
+                "type",
+                "ticker",
+                "current_price",
+                "benchmark_price",
+                "benchmark_close",
+            ]
+        )
         .agg(
             pl.col("shares").sum(),
             pl.col("value").sum(),
@@ -365,7 +386,7 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
 
         stk_all = pl.read_database(
             query="""
-                    SELECT report_date as date, symbol as ticker, daily_return as return
+                    SELECT report_date as date, symbol as ticker, mark_price, daily_return as return
                     FROM historical_data
                     WHERE symbol = ANY(:tickers)
                         AND report_date BETWEEN :min_date AND :max_date
@@ -379,23 +400,57 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
                     "max_date": max_date,
                 }
             },
-        ).with_columns(pl.col("return").cast(pl.Float64))
+        ).with_columns(pl.col("mark_price", "return").cast(pl.Float64))
 
         bmk_all = get_benchmark_timeseries(min_date, max_date)
         rf_all = get_risk_free_timeseries(min_date, max_date)
 
-        unique_combinations = trades.select("ticker", "date").unique().to_dicts()
+        unique_combinations = (
+            trades.select(
+                "ticker", "date", "price", "benchmark_price", "benchmark_close"
+            )
+            .unique()
+            .to_dicts()
+        )
         alpha_map = {}
 
         for combo in unique_combinations:
             t_symbol = combo["ticker"]
             t_date = combo["date"]
+            t_price = combo["price"]
+            t_bmk_price = combo["benchmark_price"]
+            t_bmk_close = combo["benchmark_close"]
 
             stk_sub = stk_all.filter(
                 (pl.col("ticker") == t_symbol) & (pl.col("date") >= t_date)
             )
             bmk_sub = bmk_all.filter(pl.col("date") >= t_date)
             rf_sub = rf_all.filter(pl.col("date") >= t_date)
+
+            # Adjust Day 0 returns to reflect intraday trade and benchmark entry prices
+            day0_stk_row = stk_sub.filter(pl.col("date") == t_date)
+            if (
+                t_price
+                and t_price > 0
+                and not day0_stk_row.is_empty()
+                and day0_stk_row["mark_price"][0] is not None
+            ):
+                day0_stk = (day0_stk_row["mark_price"][0] - t_price) / t_price
+                stk_sub = stk_sub.with_columns(
+                    pl.when(pl.col("date") == t_date)
+                    .then(day0_stk)
+                    .otherwise("return")
+                    .alias("return")
+                )
+
+            if t_bmk_price and t_bmk_close and t_bmk_price > 0 and len(bmk_sub) > 0:
+                day0_bmk = (t_bmk_close - t_bmk_price) / t_bmk_price
+                bmk_sub = bmk_sub.with_columns(
+                    pl.when(pl.col("date") == t_date)
+                    .then(day0_bmk)
+                    .otherwise("return")
+                    .alias("return")
+                )
 
             df_wide = (
                 stk_sub.join(bmk_sub, on=["date"], suffix="_bmk", how="left")
@@ -422,11 +477,13 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
             else:
                 print("not enough data to get alpha for", t_symbol, t_date)
 
-            alpha_map[(t_symbol, t_date)] = alpha
+            alpha_map[(t_symbol, t_date, t_price, t_bmk_price)] = alpha
 
-        trade_dicts = trades.to_dicts()
+        trade_dicts = trades.drop("benchmark_close").to_dicts()
         for t in trade_dicts:
-            t["alpha"] = alpha_map.get((t["ticker"], t["date"]), None)
+            t["alpha"] = alpha_map.get(
+                (t["ticker"], t["date"], t.get("price"), t.get("benchmark_price")), None
+            )
 
         trade_records = [TradeRecord(**t) for t in trade_dicts]
 
