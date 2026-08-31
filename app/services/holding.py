@@ -470,7 +470,9 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
             )
 
             alpha = None
-            if len(df_wide) >= 2:
+            if t_symbol == "IWV":
+                alpha = 0.0
+            elif len(df_wide) >= 2:
                 try:
                     alpha, _ = calculate_alpha_beta(df_wide)
                 except Exception as e:
