@@ -87,9 +87,9 @@ def get_holding_summary(request: HoldingRequest) -> dict[str, any]:
     )
 
     max_date = (
-        bmk["date"].max()
-        if len(bmk) > 0
-        else (stk["date"].max() if len(stk) > 0 else request.end)
+        stk["date"].max()
+        if len(stk) > 0
+        else (bmk["date"].max() if len(bmk) > 0 else request.end)
     )
 
     side = stk["shares"].sign().last()

@@ -62,9 +62,9 @@ def get_all_holdings_summary(request: AllHoldingsRequest) -> dict[str, any]:
     rf = get_risk_free_timeseries(request.start, request.end)
 
     max_date = (
-        bmk["date"].max()
-        if len(bmk) > 0
-        else (stk["date"].max() if len(stk) > 0 else request.end)
+        stk["date"].max()
+        if len(stk) > 0
+        else (bmk["date"].max() if len(bmk) > 0 else request.end)
     )
 
     holdings = (
