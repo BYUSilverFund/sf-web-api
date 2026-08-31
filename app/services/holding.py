@@ -427,30 +427,31 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
             bmk_sub = bmk_all.filter(pl.col("date") >= t_date)
             rf_sub = rf_all.filter(pl.col("date") >= t_date)
 
-            # Adjust Day 0 returns to reflect intraday trade and benchmark entry prices
-            day0_stk_row = stk_sub.filter(pl.col("date") == t_date)
-            if (
-                t_price
-                and t_price > 0
-                and not day0_stk_row.is_empty()
-                and day0_stk_row["mark_price"][0] is not None
-            ):
-                day0_stk = (day0_stk_row["mark_price"][0] - t_price) / t_price
-                stk_sub = stk_sub.with_columns(
-                    pl.when(pl.col("date") == t_date)
-                    .then(day0_stk)
-                    .otherwise("return")
-                    .alias("return")
-                )
+            # Adjust Day 0 returns to reflect intraday trade and benchmark entry prices (skip for IWV benchmark ticker)
+            if t_symbol != "IWV":
+                day0_stk_row = stk_sub.filter(pl.col("date") == t_date)
+                if (
+                    t_price
+                    and t_price > 0
+                    and not day0_stk_row.is_empty()
+                    and day0_stk_row["mark_price"][0] is not None
+                ):
+                    day0_stk = (day0_stk_row["mark_price"][0] - t_price) / t_price
+                    stk_sub = stk_sub.with_columns(
+                        pl.when(pl.col("date") == t_date)
+                        .then(day0_stk)
+                        .otherwise("return")
+                        .alias("return")
+                    )
 
-            if t_bmk_price and t_bmk_close and t_bmk_price > 0 and len(bmk_sub) > 0:
-                day0_bmk = (t_bmk_close - t_bmk_price) / t_bmk_price
-                bmk_sub = bmk_sub.with_columns(
-                    pl.when(pl.col("date") == t_date)
-                    .then(day0_bmk)
-                    .otherwise("return")
-                    .alias("return")
-                )
+                if t_bmk_price and t_bmk_close and t_bmk_price > 0 and len(bmk_sub) > 0:
+                    day0_bmk = (t_bmk_close - t_bmk_price) / t_bmk_price
+                    bmk_sub = bmk_sub.with_columns(
+                        pl.when(pl.col("date") == t_date)
+                        .then(day0_bmk)
+                        .otherwise("return")
+                        .alias("return")
+                    )
 
             df_wide = (
                 stk_sub.join(bmk_sub, on=["date"], suffix="_bmk", how="left")
@@ -474,8 +475,6 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
                     alpha, _ = calculate_alpha_beta(df_wide)
                 except Exception as e:
                     print(e)
-            else:
-                print("not enough data to get alpha for", t_symbol, t_date)
 
             alpha_map[(t_symbol, t_date, t_price, t_bmk_price)] = alpha
 
