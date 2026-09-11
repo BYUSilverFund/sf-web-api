@@ -83,7 +83,7 @@ Configure the following environment variables in each environment (Dev/Prod) to 
 - `COGNITO_USER_POOL_ID` – ID of the Cognito User Pool.
 - `COGNITO_APP_CLIENT_ID` – App client ID whose tokens are accepted by the API.
 
-The backend expects an `Authorization: Bearer <JWT>` header containing a valid Cognito access or ID token. In the browser, ensure your frontend obtains the token from Cognito (e.g. via Amplify/Auth) and forwards it on API requests.
+User registration is restricted via a Pre-Sign-Up Lambda trigger provisioned in `sf-aws-terraform` to validate email domains. The backend expects an `Authorization: Bearer <JWT>` header containing a valid Cognito access or ID token. In the browser, ensure your frontend obtains the token from Cognito (e.g. via Amplify/Auth) and forwards it on API requests.
 
 ## Testing & Coverage
 
