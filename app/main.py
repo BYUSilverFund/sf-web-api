@@ -7,6 +7,7 @@ from app.routers import (
     all_holdings,
     all_portfolios,
     benchmark,
+    chatbot,
     covariance_matrix,
     factor_exposures,
     fund,
@@ -47,6 +48,7 @@ app.include_router(
 app.include_router(
     risk_forecast.router, prefix="/risk_forecast", tags=["Risk Forecast"]
 )
+app.include_router(chatbot.router, prefix="/chat", tags=["Chatbot"])
 
 
 # Health check endpoint
