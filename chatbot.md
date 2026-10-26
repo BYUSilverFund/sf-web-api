@@ -35,4 +35,6 @@ The chatbot should expose only these explicitly defined tools to the model. Vali
 
 ## Retrieval storage
 
-The API embeds each question with Titan Text Embeddings V2 (1024 dimensions), retrieves up to five nearest indexed chunks, then streams Nova 2 Lite output. Model IDs can be overridden with `BEDROCK_EMBEDDING_MODEL_ID` and `BEDROCK_CHAT_MODEL_ID`. The expected PostgreSQL contract is in `migrations/001_chatbot_schema.sql`; apply it separately after enabling pgvector. Without indexed tables/documents the stream still calls Bedrock and instructs the model to say the library is not indexed yet.
+The API embeds each question with Titan Text Embeddings V2 (1024 dimensions), retrieves up to five nearest indexed chunks, then streams Nova 2 Lite output. Model IDs can be overridden with `BEDROCK_EMBEDDING_MODEL_ID` and `BEDROCK_CHAT_MODEL_ID`.
+
+The pgvector contract is in `migrations/001_chatbot_schema.sql`. Apply it once after enabling pgvector. `chatbot.ingestion_state` records each S3 source object and its indexing status; `chatbot.embeddings` stores the document chunks and 1024-dimension vectors. The API searches only rows whose ingestion state is `indexed`. Without indexed tables or documents, it still calls Bedrock and instructs the model to say the library is not indexed yet.

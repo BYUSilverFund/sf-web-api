@@ -60,15 +60,15 @@ def retrieve_sources(embedding: list[float]) -> list[dict[str, Any]]:
                 text(
                     """
                 SELECT
-                    to_regclass('chatbot.document_manifest') AS manifest_table,
-                    to_regclass('chatbot.document_chunks') AS chunks_table
+                    to_regclass('chatbot.ingestion_state') AS ingestion_state_table,
+                    to_regclass('chatbot.embeddings') AS embeddings_table
                 """
                 )
             )
             .mappings()
             .one()
         )
-        if not tables["manifest_table"] or not tables["chunks_table"]:
+        if not tables["ingestion_state_table"] or not tables["embeddings_table"]:
             logger.info(
                 "Chatbot document tables are not installed; using empty context"
             )
@@ -81,9 +81,9 @@ def retrieve_sources(embedding: list[float]) -> list[dict[str, Any]]:
                     chunks.document_key,
                     chunks.page,
                     chunks.excerpt
-                FROM chatbot.document_chunks AS chunks
-                JOIN chatbot.document_manifest AS documents
-                  ON documents.sharepoint_item_id = chunks.sharepoint_item_id
+                FROM chatbot.embeddings AS chunks
+                JOIN chatbot.ingestion_state AS documents
+                  ON documents.document_key = chunks.document_key
                 WHERE documents.processing_status = 'indexed'
                 ORDER BY chunks.embedding <=> CAST(:embedding AS vector)
                 LIMIT :limit
