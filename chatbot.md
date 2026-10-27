@@ -25,13 +25,35 @@
 
 ## LLM database tools and routes
 
-Placeholder for the allowlisted API routes or service operations the LLM may invoke to query database-backed data. Define each tool's inputs, output, and authorization before implementation. Do not expose arbitrary SQL execution.
+The model must not generate or execute SQL. Nova 2 Lite receives typed tool definitions in `app/services/chatbot_tools.py`; `app/services/chatbot.py` validates and dispatches tool calls to existing read-only service functions, then returns their JSON results to Nova. Tool execution only occurs within the Cognito-protected `POST /chat/stream` request. Every valid Cognito user has the same chatbot data access, so no per-user fund mapping is required.
 
-| Tool | API route or service | Inputs | Returned data | Authorization |
-| --- | --- | --- | --- | --- |
-| _TBD_ | _TBD_ | _TBD_ | _TBD_ | Authenticated user / _TBD_ |
+Resolve fund names through a server-side allowlist; never trust account IDs from the model. Parse date inputs as dates and bind every value as a SQL parameter—never interpolate model values into SQL. For example:
 
-The chatbot should expose only these explicitly defined tools to the model. Validate tool inputs and enforce user authorization in the API before querying the database.
+```python
+connection.execute(
+    text("""
+        SELECT ... FROM fund_returns
+        WHERE client_account_id = :account_id
+          AND date BETWEEN :start_date AND :end_date
+    """),
+    {"account_id": fund_id, "start_date": args.start_date, "end_date": args.end_date},
+)
+```
+
+Use a dedicated read-only database role scoped to the required views or query functions. Do not expose writes, auth data, or chatbot ingestion tables.
+
+Wrap existing service functions as tools and return compact JSON (not CSV). The chatbot calls these functions inside the authenticated chat request; it does not need to make HTTP requests back to the API.
+
+| Tool | Existing service / frontend route | Inputs | Returned data |
+| --- | --- | --- | --- |
+| `get_portfolio_summary` | `POST /portfolio/summary` | fund, start date, end date | Value, returns, Sharpe ratio, volatility, dividends, alpha, beta |
+| `get_top_positions` | `POST /top-positions/` | fund | Latest top 10 positions by value |
+| `get_holdings_summary` | `POST /all-holdings/summary` | fund, start date, end date | Summary metrics for each holding |
+| `get_holding_summary` | `POST /holding/summary` | fund, ticker, start date, end date | Summary metrics for one holding |
+| `get_trades` | `POST /portfolio/trades` or `/holding/trades` | fund, optional ticker, start date, end date | Matching trades |
+| `get_dividends` | `POST /holding/dividends` | fund, ticker, start date, end date | Dividend history |
+
+All valid Cognito users share the same chatbot data access. Expose only these explicitly defined read-only tools and enforce input validation and result limits in the API.
 
 ## Retrieval storage
 
