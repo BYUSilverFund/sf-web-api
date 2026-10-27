@@ -64,8 +64,29 @@ class _HoldingArgs(_FundRangeArgs):
         return value
 
 
+class _HoldingsSummaryArgs(_FundRangeArgs):
+    sort_by: (
+        Literal[
+            "ticker",
+            "value",
+            "total_return",
+            "volatility",
+            "dividends",
+            "dividend_yield",
+            "alpha",
+            "beta",
+        ]
+        | None
+    ) = None
+    sort_desc: bool | None = None
+    limit: int = Field(default=50, ge=1, le=50)
+
+
 class _TradesArgs(_FundRangeArgs):
     ticker: str | None = Field(default=None, min_length=1, max_length=32)
+    sort_by: Literal["date", "value", "ticker", "price", "shares", "type"] | None = None
+    sort_desc: bool | None = None
+    limit: int = Field(default=50, ge=1, le=50)
 
     @field_validator("ticker")
     @classmethod
@@ -76,6 +97,12 @@ class _TradesArgs(_FundRangeArgs):
         if not value:
             raise ValueError("ticker must not be blank")
         return value
+
+
+class _DividendsArgs(_HoldingArgs):
+    sort_by: Literal["date", "dividends", "dividends_per_share", "shares"] | None = None
+    sort_desc: bool | None = None
+    limit: int = Field(default=50, ge=1, le=50)
 
 
 class _TopPositionsArgs(_ToolArgs):
@@ -102,6 +129,33 @@ def _range_properties(*, ticker: bool = False) -> dict:
             "description": "Stock ticker symbol.",
         }
     return properties
+
+
+def _list_properties(sort_fields: list[str]) -> dict:
+    return {
+        "sort_by": {
+            "anyOf": [
+                {"type": "string", "enum": sort_fields},
+                {"type": "null"},
+            ],
+            "description": (
+                "Allowlisted output column; null uses the tool's default order."
+            ),
+        },
+        "sort_desc": {
+            "anyOf": [{"type": "boolean"}, {"type": "null"}],
+            "description": (
+                "true sorts descending, false ascending, null uses the default direction."
+            ),
+        },
+        "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": MAX_RETURNED_ROWS,
+            "default": MAX_RETURNED_ROWS,
+            "description": "Maximum rows to return; never more than 50.",
+        },
+    }
 
 
 def _tool(name: str, description: str, properties: dict, required: list[str]) -> dict:
@@ -137,7 +191,21 @@ CHATBOT_TOOL_CONFIG = {
         _tool(
             "get_holdings_summary",
             "Get performance and risk metrics for all holdings in one fund over a date range.",
-            _range_properties(),
+            {
+                **_range_properties(),
+                **_list_properties(
+                    [
+                        "ticker",
+                        "value",
+                        "total_return",
+                        "volatility",
+                        "dividends",
+                        "dividend_yield",
+                        "alpha",
+                        "beta",
+                    ]
+                ),
+            },
             ["fund", "start_date", "end_date"],
         ),
         _tool(
@@ -148,14 +216,24 @@ CHATBOT_TOOL_CONFIG = {
         ),
         _tool(
             "get_trades",
-            "Get trades for one fund, optionally filtered to a ticker, over a date range.",
-            _range_properties(ticker=True),
+            "Get up to 50 trades for one fund, optionally filtered to a ticker, over a date range. Sort columns are allowlisted; null sort_desc uses the default direction (newest first).",
+            {
+                **_range_properties(ticker=True),
+                **_list_properties(
+                    ["date", "value", "ticker", "price", "shares", "type"]
+                ),
+            },
             ["fund", "start_date", "end_date"],
         ),
         _tool(
             "get_dividends",
-            "Get dividend history for one ticker in one fund over a date range.",
-            _range_properties(ticker=True),
+            "Get up to 50 dividend records for one ticker in one fund over a date range. Sort columns are allowlisted.",
+            {
+                **_range_properties(ticker=True),
+                **_list_properties(
+                    ["date", "dividends", "dividends_per_share", "shares"]
+                ),
+            },
             ["fund", "ticker", "start_date", "end_date"],
         ),
     ],
@@ -189,11 +267,31 @@ def _sanitize_non_finite(value):
     return value
 
 
-def _cap_rows(result: dict, key: str) -> dict:
+def _sort_and_limit(
+    result: dict,
+    *,
+    key: str,
+    sort_by: str | None,
+    sort_desc: bool | None,
+    limit: int,
+) -> dict:
     rows = result.get(key)
-    if isinstance(rows, list) and len(rows) > MAX_RETURNED_ROWS:
-        result[key] = rows[:MAX_RETURNED_ROWS]
+    if not isinstance(rows, list):
+        return result
+
+    if sort_by:
+        present = [row for row in rows if row.get(sort_by) is not None]
+        missing = [row for row in rows if row.get(sort_by) is None]
+        present.sort(
+            key=lambda row: row[sort_by],
+            reverse=True if sort_desc is None else sort_desc,
+        )
+        rows = present + missing
+
+    safe_limit = min(max(limit, 1), MAX_RETURNED_ROWS)
+    if len(rows) > safe_limit:
         result["truncated"] = True
+    result[key] = rows[:safe_limit]
     return result
 
 
@@ -214,12 +312,16 @@ def execute_chatbot_tool(name: str, raw_input: object) -> dict:
             return _json_model(TopPositionsResponse, result)
 
         if name == "get_holdings_summary":
-            args = _FundRangeArgs.model_validate(raw_input)
+            args = _HoldingsSummaryArgs.model_validate(raw_input)
             result = get_all_holdings_summary(
                 AllHoldingsRequest(**_range_request(args))
             )
-            return _cap_rows(
-                _json_model(AllHoldingsSummaryResponse, result), "holdings"
+            return _sort_and_limit(
+                _json_model(AllHoldingsSummaryResponse, result),
+                key="holdings",
+                sort_by=args.sort_by,
+                sort_desc=args.sort_desc,
+                limit=args.limit,
             )
 
         if name == "get_holding_summary":
@@ -232,16 +334,38 @@ def execute_chatbot_tool(name: str, raw_input: object) -> dict:
         if name == "get_trades":
             args = _TradesArgs.model_validate(raw_input)
             result = get_trades(
-                HoldingRequest(**_range_request(args), ticker=args.ticker)
+                HoldingRequest(**_range_request(args), ticker=args.ticker),
+                sort_by=args.sort_by or "date",
+                sort_desc=(
+                    args.sort_desc
+                    if args.sort_desc is not None
+                    else (True if args.sort_by is not None else None)
+                ),
+                limit=args.limit,
             )
-            return _cap_rows(_json_model(TradesResponse, result), "trades")
+            return _sort_and_limit(
+                _json_model(TradesResponse, result),
+                key="trades",
+                sort_by=None,
+                sort_desc=None,
+                limit=args.limit,
+            )
 
         if name == "get_dividends":
-            args = _HoldingArgs.model_validate(raw_input)
+            args = _DividendsArgs.model_validate(raw_input)
             result = get_dividends(
-                HoldingRequest(**_range_request(args), ticker=args.ticker)
+                HoldingRequest(**_range_request(args), ticker=args.ticker),
+                sort_by=args.sort_by or "date",
+                sort_desc=args.sort_desc,
+                limit=args.limit,
             )
-            return _cap_rows(_json_model(DividendsResponse, result), "dividends")
+            return _sort_and_limit(
+                _json_model(DividendsResponse, result),
+                key="dividends",
+                sort_by=args.sort_by,
+                sort_desc=args.sort_desc,
+                limit=args.limit,
+            )
 
     except ValidationError as error:
         raise InvalidToolRequest(

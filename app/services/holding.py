@@ -252,34 +252,53 @@ def get_holding_time_series(request: HoldingRequest) -> dict[str, any]:
     return result
 
 
-def get_dividends(request: HoldingRequest) -> dict[str, any]:
+def get_dividends(
+    request: HoldingRequest,
+    *,
+    sort_by: str = "date",
+    sort_desc: bool | None = None,
+    limit: int | None = None,
+) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
+    sort_columns = {
+        "date": "date",
+        "dividends": "dividends",
+        "dividends_per_share": "dividends_per_share",
+        "shares": "shares",
+    }
+    sort_column = sort_columns.get(sort_by)
+    if sort_column is None:
+        raise ValueError("Unsupported dividend sort column")
+    sort_direction = "DESC" if sort_desc is True else "ASC"
+    limit_clause = "LIMIT :limit" if limit is not None else ""
+    params = {
+        "account_id": client_account_id,
+        "ticker": request.ticker,
+        "start": request.start,
+        "end": request.end,
+    }
+    if limit is not None:
+        params["limit"] = min(max(limit, 1), 50)
 
     dividends = (
         pl.read_database(
-            query="""
+            query=f"""
                 SELECT * 
                 FROM holding_returns 
                 WHERE client_account_id = :account_id 
                     AND ticker = :ticker
                     AND date BETWEEN :start AND :end
-                ORDER BY date;
+                    AND dividends <> 0
+                ORDER BY {sort_column} {sort_direction} NULLS LAST
+                {limit_clause};
             """,
             connection=engine,
-            execute_options={
-                "parameters": {
-                    "account_id": client_account_id,
-                    "ticker": request.ticker,
-                    "start": request.start,
-                    "end": request.end,
-                }
-            },
+            execute_options={"parameters": params},
         )
         .with_columns(
             pl.col("shares", "dividends", "dividends_per_share").cast(pl.Float64)
         )
         .filter(pl.col("dividends").ne(0))
-        .sort("date")
         .select("date", "shares", "dividends_per_share", "dividends")
         .to_dicts()
     )
@@ -295,8 +314,28 @@ def get_dividends(request: HoldingRequest) -> dict[str, any]:
     return result
 
 
-def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
+def get_trades(
+    request: HoldingRequest | PortfolioRequest,
+    *,
+    sort_by: str = "date",
+    sort_desc: bool | None = None,
+    limit: int | None = None,
+) -> dict[str, any]:
     client_account_id = get_account_id_from_name(request.fund)
+
+    sort_columns = {
+        "date": "report_date",
+        "value": "trade_value",
+        "ticker": "symbol",
+        "price": "trade_price",
+        "shares": "quantity",
+        "type": "buy_sell",
+    }
+    sort_column = sort_columns.get(sort_by)
+    if sort_column is None:
+        raise ValueError("Unsupported trade sort column")
+    sort_direction = "DESC" if sort_desc is not False else "ASC"
+    limit_clause = "LIMIT :limit" if limit is not None else ""
 
     ticker = getattr(request, "ticker", None)
     ticker_clause = "AND t.symbol = :ticker" if ticker else ""
@@ -312,36 +351,60 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
     trades = (
         pl.read_database(
             query=f"""
-                WITH latest_prices AS (
-                    SELECT DISTINCT ON (symbol) symbol, mark_price AS current_price
-                    FROM historical_data
-                    ORDER BY symbol, report_date DESC
-                )
+                WITH filtered_trades AS (
+                    SELECT t.*
+                    FROM trades t
+                    WHERE t.client_account_id = :account_id
+                        {ticker_clause}
+                        AND t.report_date BETWEEN :start AND :end
+                ), latest_prices AS (
+                    SELECT DISTINCT ON (h.symbol)
+                        h.symbol, h.mark_price AS current_price
+                    FROM historical_data h
+                    JOIN (SELECT DISTINCT symbol FROM filtered_trades) symbols
+                      ON symbols.symbol = h.symbol
+                    ORDER BY h.symbol, h.report_date DESC
+                ), grouped_trades AS (
                 SELECT 
                     t.report_date,
                     t.buy_sell,
-                    t.quantity,
+                    SUM(t.quantity) AS quantity,
                     t.trade_price,
                     t.symbol,
                     t.benchmark_price,
                     b.adjusted_close AS benchmark_close,
-                    h.current_price
-                FROM trades t
+                    h.current_price,
+                    SUM(t.quantity * t.trade_price) AS trade_value
+                FROM filtered_trades t
                 LEFT JOIN latest_prices h ON t.symbol = h.symbol
                 LEFT JOIN benchmark b ON t.report_date = b.date
-                WHERE t.client_account_id = :account_id 
-                    {ticker_clause}
-                    AND t.report_date BETWEEN :start AND :end
-                ORDER BY t.report_date
-                ;
+                GROUP BY
+                    t.report_date,
+                    t.buy_sell,
+                    t.trade_price,
+                    t.symbol,
+                    t.benchmark_price,
+                    b.adjusted_close,
+                    h.current_price
+                )
+                SELECT * FROM grouped_trades
+                ORDER BY {sort_column} {sort_direction} NULLS LAST,
+                         report_date DESC, trade_value DESC, symbol ASC
+                {limit_clause};
             """,
             connection=engine,
-            execute_options={"parameters": params},
+            execute_options={
+                "parameters": {
+                    **params,
+                    **({"limit": min(max(limit, 1), 50)} if limit is not None else {}),
+                }
+            },
         )
         .with_columns(
             pl.col(
                 "quantity",
                 "trade_price",
+                "trade_value",
                 "current_price",
                 "benchmark_price",
                 "benchmark_close",
@@ -353,27 +416,11 @@ def get_trades(request: HoldingRequest | PortfolioRequest) -> dict[str, any]:
             pl.col("quantity").alias("shares"),
             pl.col("trade_price").alias("price"),
             pl.col("symbol").alias("ticker"),
-            pl.col("quantity").mul("trade_price").alias("value"),
+            pl.col("trade_value").alias("value"),
             pl.col("current_price"),
             pl.col("benchmark_price"),
             pl.col("benchmark_close"),
         )
-        .group_by(
-            [
-                "date",
-                "price",
-                "type",
-                "ticker",
-                "current_price",
-                "benchmark_price",
-                "benchmark_close",
-            ]
-        )
-        .agg(
-            pl.col("shares").sum(),
-            pl.col("value").sum(),
-        )
-        .sort("date", "value", descending=True)
     )
 
     if trades.is_empty():

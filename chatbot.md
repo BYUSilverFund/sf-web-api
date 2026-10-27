@@ -53,6 +53,8 @@ Wrap existing service functions as tools and return compact JSON (not CSV). The 
 | `get_trades` | `POST /portfolio/trades` or `/holding/trades` | fund, optional ticker, start date, end date | Matching trades |
 | `get_dividends` | `POST /holding/dividends` | fund, ticker, start date, end date | Dividend history |
 
+List tools accept an allowlisted `sort_by`, `sort_desc` (`true`, `false`, or `null` for the default direction), and `limit` from 1 to 50. The API validates sort columns and binds values; it never inserts model-provided SQL. Trades are grouped, sorted, and limited in SQL before per-trade metric calculations. Dividends are filtered, sorted, and limited in SQL. Summary calculations may read more than 50 historical rows as needed, but the chatbot returns no more than 50 list items. Top positions remain limited to 10.
+
 All valid Cognito users share the same chatbot data access. Expose only these explicitly defined read-only tools and enforce input validation and result limits in the API.
 
 ## Retrieval storage
