@@ -7,7 +7,7 @@ on:
       - dev
       - prod
     paths-ignore:
-      - "README.md"
+      # - "README.md"
       - "tests/**"
     #   - ".github/**"
 

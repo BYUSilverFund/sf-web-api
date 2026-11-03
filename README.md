@@ -1,3 +1,4 @@
+poke 
 # Silver Fund Web API
 
 Web API written in Python FastAPI for use with the Silver Fund dashboard.
@@ -84,6 +85,15 @@ Configure the following environment variables in each environment (Dev/Prod) to 
 - `COGNITO_APP_CLIENT_ID` – App client ID whose tokens are accepted by the API.
 
 User registration is restricted via a Pre-Sign-Up Lambda trigger provisioned in `sf-aws-terraform` to validate email domains. The backend expects an `Authorization: Bearer <JWT>` header containing a valid Cognito access or ID token. In the browser, ensure your frontend obtains the token from Cognito (e.g. via Amplify/Auth) and forwards it on API requests.
+
+### Abuse controls
+
+The API rejects request bodies over 64 KiB by default and applies per-instance
+rate and concurrency limits to Bedrock chat and CSV export endpoints. It emits a
+request ID and a structured audit log for those routes without logging request
+bodies or credentials. Configure the environment variables in `example.env` to
+fit the deployment, and set an AWS WAF or ALB rate rule for a shared edge limit
+and Bedrock account-level budget alarms/Service Quotas.
 
 ## Testing & Coverage
 
