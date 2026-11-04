@@ -10,6 +10,7 @@ from typing import Any
 
 import boto3
 from sqlalchemy import text
+from botocore.config import Config
 
 from app.db import engine
 from app.services.chatbot_tools import (
@@ -31,8 +32,20 @@ if not logger.handlers:
 EMBEDDING_DIMENSIONS = 1024
 MAX_SOURCES = 5
 MAX_SOURCE_EXCERPT_CHARS = 1200
-MAX_OUTPUT_TOKENS = 1200
 MAX_TOOL_ROUNDS = 3
+
+
+def _bounded_positive_int_env(name: str, default: int, maximum: int) -> int:
+    value = int(os.getenv(name, str(default)))
+    if not 1 <= value <= maximum:
+        raise RuntimeError(f"{name} must be between 1 and {maximum}")
+    return value
+
+
+# Bound each model invocation even when the deployment configuration is wrong.
+MAX_OUTPUT_TOKENS = _bounded_positive_int_env("BEDROCK_MAX_OUTPUT_TOKENS", 1200, 1200)
+BEDROCK_CONNECT_TIMEOUT_SECONDS = int(os.getenv("BEDROCK_CONNECT_TIMEOUT_SECONDS", "5"))
+BEDROCK_READ_TIMEOUT_SECONDS = int(os.getenv("BEDROCK_READ_TIMEOUT_SECONDS", "75"))
 
 
 def _bedrock_client():
@@ -42,7 +55,15 @@ def _bedrock_client():
         or os.getenv("COGNITO_REGION")
         or "us-west-2"
     )
-    return boto3.client("bedrock-runtime", region_name=region)
+    return boto3.client(
+        "bedrock-runtime",
+        region_name=region,
+        config=Config(
+            connect_timeout=BEDROCK_CONNECT_TIMEOUT_SECONDS,
+            read_timeout=BEDROCK_READ_TIMEOUT_SECONDS,
+            retries={"max_attempts": 2, "mode": "standard"},
+        ),
+    )
 
 
 def embed_question(question: str) -> list[float]:
