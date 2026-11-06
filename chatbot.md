@@ -61,4 +61,48 @@ All valid Cognito users share the same chatbot data access. Expose only these ex
 
 The API embeds each question with Titan Text Embeddings V2 (1024 dimensions), retrieves up to five nearest indexed chunks, then streams Nova 2 Lite output. Model IDs can be overridden with `BEDROCK_EMBEDDING_MODEL_ID` and `BEDROCK_CHAT_MODEL_ID`.
 
-The pgvector contract is in `migrations/001_chatbot_schema.sql`. Apply it once after enabling pgvector. `chatbot.ingestion_state` records each S3 source object and its indexing status; `chatbot.embeddings` stores the document chunks and 1024-dimension vectors. The API searches only rows whose ingestion state is `indexed`. Without indexed tables or documents, it still calls Bedrock and instructs the model to say the library is not indexed yet.
+The pgvector contract is in `migrations/001_chatbot_schema.sql`. Apply it once after enabling pgvector. `chatbot.ingestion_state` records each S3 source object and its indexing status; `chatbot.embeddings` stores the document chunks and 1024-dimension vectors. The API searches only rows whose ingestion state is `indexed`. Without indexed tables or documents, it still calls Bedrock and instructs the model to say no usable document evidence is available.
+
+Source excerpts use a 1,200-character soft target, extended only to a complete
+Markdown block, with a 6,000-character hard cap per source and 24,000 characters
+across all returned excerpts. Paragraphs (including inline math), contiguous
+Markdown tables, fenced code, display math (`$$` / `\[...\]`), and LaTeX
+environments are kept atomic. Oversized or unclosed blocks are omitted rather
+than sliced; sources with no usable prefix are omitted. This cannot repair
+content already cut during extraction or ingestion. Citation numbers retain
+retrieval positions and may have gaps.
+
+The model receives the same excerpts and source metadata as the SSE `sources`
+event. Source objects add `truncated` (boolean) and may include `pdfPages`,
+`pages`, `pageStart`, or `pageEnd` when stored on the chunk. These page fields
+refer to the original chunk, including when only a prefix is shown. The existing
+`page` remains the navigation fallback. Frontends should allow excerpts longer
+than 1,200 characters, render complete Markdown, indicate `truncated`, accept
+optional page metadata, and use `citation` rather than array position for labels.
+The event sequence and existing required source fields are unchanged.
+
+
+Shortened excerpts include the visible notice "Excerpt shortened by the API;
+later source content is omitted." This is API status text, not quoted document
+content, and is included in the model evidence and both character budgets.
+If a complete prefix and its notice cannot fit together, the source is omitted
+entirely. No notice-only or empty source cards are returned.
+Optional page lists are accepted only as nonempty arrays of up to 100 positive
+32-bit integers; malformed or oversized metadata is omitted. Scalar page-range
+metadata must also contain positive 32-bit integers. This bounds metadata growth
+as well as excerpt growth.
+
+Validated against the current `sf-web-app` source parser and assistant renderer:
+citation gaps are preserved and displayed correctly. The parser safely ignores
+`pdfPages` and `truncated`, so the API's inline notice provides compatibility.
+The current UI shows only `page`; displaying all spanning pages and a separate
+truncation badge requires changes to `src/lib/assistant/adapter.ts`,
+`src/lib/assistant/live.ts`, and
+`src/components/assistant/SilverFundAssistant.tsx` in that repository.
+No frontend files are changed by this API patch.
+
+Local API validation: run
+`pytest tests/routes/test_chatbot.py tests/services/test_chatbot_sources.py tests/services/test_chatbot_tools.py tests/auth/test_cognito_auth.py tests/auth/test_cors.py`.
+In the Codex sandbox, Starlette's synchronous TestClient hangs in AnyIO's
+cross-thread portal even for an unrelated minimal FastAPI app. The same route
+tests pass outside the sandbox; this is independent of Bedrock or retrieval.
