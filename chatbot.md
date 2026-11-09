@@ -106,3 +106,23 @@ Local API validation: run
 In the Codex sandbox, Starlette's synchronous TestClient hangs in AnyIO's
 cross-thread portal even for an unrelated minimal FastAPI app. The same route
 tests pass outside the sandbox; this is independent of Bedrock or retrieval.
+
+Document-answer instructions prioritize the requested definition or equation
+before related optimization or scaling procedures. They preserve the distinction
+between active, benchmark, and total portfolio weights, request concise symbol
+explanations supported by the excerpts, and attach citations to the specific
+supporting claims. A freely chosen scale should not be confused with an undefined
+magnitude. Missing definitions or symbol meanings should be acknowledged rather
+than supplied from assumptions. These instructions contain no document-specific
+formulas or page rules and do not change retrieval, source budgets, or API fields.
+
+Answers should be direct and avoid unnecessary follow-on claims. Generated
+examples must be labeled as illustrations rather than document facts and remain
+consistent with all stated constraints. The prompt disallows unsupported claims
+about a manager's motives and asks the model to distinguish related quantities.
+
+`tests/services/test_chatbot_prompt.py` checks the instructions sent to a mocked
+Bedrock client using synthetic definition/procedure passages in both orders and
+procedure-only evidence. These offline checks verify prompt construction,
+evidence order, citation labels, and inference configuration. They do not measure
+live model accuracy or prove that a generated answer will follow the instructions.
