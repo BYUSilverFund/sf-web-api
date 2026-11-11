@@ -209,3 +209,42 @@ Use to watch live while reproducing the issue.
 ```bash
 tail -n 100 -f /var/log/web.stdout.log
 ```
+
+## Chatbot ownership and evaluation
+
+This repository is the authoritative implementation for chatbot system prompts,
+user-message construction, Bedrock inference settings, retrieval/excerpt bounds,
+read-only tool definitions/execution, citation formatting and SSE serialization.
+The authenticated `POST /chat/stream` route accepts `{ "message": "..." }` and
+emits `meta`, `delta`, `sources`, `done`, or `error`. The existing `sf-web-app`
+assistant uses a Cognito access token; deployment authentication is unchanged.
+
+`sf-chatbot` owns ingestion, chunking, embeddings/indexing and evaluation. Its
+response evaluator calls this development endpoint with a legitimate Cognito
+access token and explicit `--allow-paid`; no local answer model is maintained.
+The `sources` event now includes additive `answerContexts`: the exact evidence
+blocks used in model message construction. Existing frontend clients can ignore
+this additional field. API prompt text, excerpt selection, model IDs and inference
+settings remain unchanged. An older deployment without this field is rejected by
+the evaluator rather than scored using reconstructed evidence.
+
+Current retrieval reads `chatbot.ingestion_state` and `chatbot.embeddings`, with
+1024-dimensional normalized Titan V2 vectors. `migrations/001_chatbot_schema.sql`
+is a legacy manifest/chunks schema; `002_chatbot_ingestion_schema.sql` describes
+the current contract. Apply schema changes only as a separately reviewed action;
+these files do not automatically migrate existing tables. No schema is applied
+as part of the consolidation. Fund/document filtering and complete extraction
+span/revision persistence are not currently implemented in this contract.
+
+Offline verification runs with `pytest`; tests cover the actual production API
+code with external services mocked. `tests/services/test_chatbot_evaluation_contract.py`
+checks evidence parity, current SQL and the actual sibling `sf-chatbot` SSE parser
+when available. Set `SF_EVALUATION_ADAPTER` to that parser's absolute path for other
+checkout layouts. With an isolated API checkout, only the sibling consumer check
+skips. No permanent development server is needed for these tests.
+
+Phoenix remains future work: developer-only trace access, authenticated response
+ratings tied to request IDs, and possible agent-assisted diagnosis with reviewed
+changes. No Phoenix dependencies, service or instrumentation are introduced here.
+See the sibling `sf-chatbot/docs/evaluation.md` for authenticated development
+commands, paid judge opt-in, historical rescoring and limitations.

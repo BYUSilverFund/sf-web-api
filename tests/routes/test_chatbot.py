@@ -58,7 +58,7 @@ def test_chat_service_streams_events_without_indexed_sources(mocker):
     assert 'event: meta\ndata: {"requestId": "req-1"}' in events[0]
     assert 'event: delta\ndata: {"text": "not "}' in events[1]
     assert 'event: delta\ndata: {"text": "indexed"}' in events[2]
-    assert 'event: sources\ndata: {"sources": []}' in events[3]
+    assert 'event: sources\ndata: {"sources": [], "answerContexts": []}' in events[3]
     assert "event: done" in events[4]
 
 

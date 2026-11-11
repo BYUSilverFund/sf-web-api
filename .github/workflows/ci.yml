@@ -16,6 +16,7 @@ jobs:
   lint-format-test:
     runs-on: ubuntu-latest
     env:
+      AWS_EC2_METADATA_DISABLED: "true"
       COGNITO_REGION: us-east-1
       COGNITO_USER_POOL_ID: us-east-1_test123
       COGNITO_APP_CLIENT_ID: test-app-client-id
