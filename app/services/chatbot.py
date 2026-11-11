@@ -250,17 +250,22 @@ def retrieve_sources(embedding: list[float]) -> list[dict[str, Any]]:
         return sources
 
 
+def source_contexts(sources: list[dict[str, Any]]) -> list[str]:
+    """Exact evidence blocks used by inference and returned for evaluation."""
+    return [
+        f"[{item['citation']}] {item['documentKey']} (page {item['page']})\n"
+        f"{item['excerpt']}"
+        f"\nSource details: {json.dumps({key: value for key, value in item.items() if key != 'excerpt'})}"
+        for item in sources
+    ]
+
+
 def _stream_answer(
     question: str, sources: list[dict[str, Any]], request_id: str
 ) -> Iterator[str]:
     model_id = os.getenv("BEDROCK_CHAT_MODEL_ID", "us.amazon.nova-2-lite-v1:0")
     if sources:
-        context = "\n\n".join(
-            f"[{item['citation']}] {item['documentKey']} (page {item['page']})\n"
-            f"{item['excerpt']}"
-            f"\nSource details: {json.dumps({key: value for key, value in item.items() if key != 'excerpt'})}"
-            for item in sources
-        )
+        context = "\n\n".join(source_contexts(sources))
         user_text = f"Question:\n{question}\n\nRetrieved excerpts:\n{context}"
     else:
         user_text = (
@@ -424,7 +429,7 @@ def _stream_answer(
                 }
             except Exception as error:
                 tool_logger.exception(
-                    "request_id=%s outcome=error error_type=%s " "duration_ms=%.2f",
+                    "request_id=%s outcome=error error_type=%s duration_ms=%.2f",
                     request_id,
                     type(error).__name__,
                     (perf_counter() - tool_started_at) * 1000,
@@ -461,7 +466,9 @@ def stream_chat_events(question: str, request_id: str) -> Iterator[str]:
         sources = retrieve_sources(embed_question(question))
         for delta in _stream_answer(question, sources, request_id):
             yield _sse("delta", {"text": delta})
-        yield _sse("sources", {"sources": sources})
+        yield _sse(
+            "sources", {"sources": sources, "answerContexts": source_contexts(sources)}
+        )
         yield _sse("done", {})
     except Exception:
         logger.exception("Chat stream failed", extra={"request_id": request_id})
