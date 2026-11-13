@@ -243,8 +243,28 @@ when available. Set `SF_EVALUATION_ADAPTER` to that parser's absolute path for o
 checkout layouts. With an isolated API checkout, only the sibling consumer check
 skips. No permanent development server is needed for these tests.
 
-Phoenix remains future work: developer-only trace access, authenticated response
-ratings tied to request IDs, and possible agent-assisted diagnosis with reviewed
-changes. No Phoenix dependencies, service or instrumentation are introduced here.
+Optional developer-only Phoenix tracing is implemented by the local observability
+integration documented below. Authenticated response ratings and agent-assisted
+diagnosis remain future work.
 See the sibling `sf-chatbot/docs/evaluation.md` for authenticated development
 commands, paid judge opt-in, historical rescoring and limitations.
+
+## Optional local chatbot tracing
+
+See [Local chatbot observability](docs/chatbot-observability.md) for Phoenix setup,
+environment variables, authenticated SSE requests, trace correlation, offline
+tests, troubleshooting, and privacy. Tracing is disabled by default and restricted
+to an explicitly configured local development environment and loopback collector.
+
+See [Recovered chatbot fund selection](docs/fund-selector-recovery.md) for the
+optional fund request contract, local restart commands, isolation rules and
+already-applied database metadata history.
+
+Local root-span question/answer visibility is separately opt-in via
+`CHATBOT_TRACE_CONTENT_ENABLED=false` by default. See the
+[Q&A capture privacy and setup notes](docs/chatbot-observability.md#opt-in-local-question-and-answer-visibility)
+before enabling it; metadata-only tracing remains the default.
+
+See [Financial question routing and portfolio-value comparisons](docs/chatbot-financial-routing.md)
+for the All Funds comparison tool, metric definition, date policy, stale-data
+handling, fund isolation, and validation.
