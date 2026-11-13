@@ -4,7 +4,14 @@ import math
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    TypeAdapter,
+    ValidationError,
+    field_validator,
+)
 
 from app.models.all_holdings import (
     AllHoldingsRequest,
@@ -18,6 +25,7 @@ from app.models.holding import (
 )
 from app.models.portfolio import PortfolioRequest, PortfolioSummaryResponse
 from app.models.top_positions import TopPositionsRequest, TopPositionsResponse
+from app.services.chatbot_financial import compare_fund_values, get_latest_dividends
 from app.services.all_holdings import get_all_holdings_summary
 from app.services.holding import get_dividends, get_holding_summary, get_trades
 from app.services.portfolio import get_portfolio_summary
@@ -109,6 +117,31 @@ class _TopPositionsArgs(_ToolArgs):
     fund: Literal["undergrad", "quant", "brigham_capital", "grad", "quant_paper"]
 
 
+class _LatestDividendsArgs(_TopPositionsArgs):
+    ticker: str | None = Field(default=None, min_length=1, max_length=32)
+
+    @field_validator("ticker")
+    @classmethod
+    def normalize_ticker(cls, value):
+        return _TradesArgs.normalize_ticker(value)
+
+
+class _LatestDividendRecord(BaseModel):
+    date: date
+    ticker: str
+    shares: float
+    dividends_per_share: float
+    dividends: float
+
+
+class _LatestDividendsResponse(BaseModel):
+    fund: str
+    ticker: str | None
+    date: date | None
+    dividends: list[_LatestDividendRecord]
+    truncated: bool
+
+
 _FUND_SCHEMA = {
     "type": "string",
     "enum": list(SUPPORTED_FUNDS),
@@ -177,8 +210,26 @@ def _tool(name: str, description: str, properties: dict, required: list[str]) ->
 CHATBOT_TOOL_CONFIG = {
     "tools": [
         _tool(
+            "compare_fund_values",
+            "Compare latest recent total reported portfolio values across supported funds. Only available with All Funds selected. Uses one common as-of date, reports stale/missing coverage and ties. Not returns, profit, or individual holdings. No arguments.",
+            {},
+            [],
+        ),
+        _tool(
+            "get_latest_dividends",
+            "Get the latest recorded dividend receipts for one fund across all holdings. Returns cash receipts and dividends_per_share, NOT dividend yield or a percentage. Do not use for yield questions. Use for 'last/latest dividend received': omit ticker unless the user specifies one. No guessed date range is needed. Returns up to 50 records on the latest available date; empty means no recorded positive dividends, not zero for an invented period.",
+            {
+                "fund": _FUND_SCHEMA,
+                "ticker": {
+                    "type": ["string", "null"],
+                    "description": "Optional ticker only when specified by the user.",
+                },
+            },
+            ["fund"],
+        ),
+        _tool(
             "get_portfolio_summary",
-            "Get performance and risk metrics for one fund over a date range.",
+            "Get performance and risk metrics for one fund over a date range, including dividend_yield as a percentage: period recorded dividends / ending portfolio value * 100. State the period; this is not automatically annualized or a forward yield.",
             _range_properties(),
             ["fund", "start_date", "end_date"],
         ),
@@ -295,12 +346,39 @@ def _sort_and_limit(
     return result
 
 
-def execute_chatbot_tool(name: str, raw_input: object) -> dict:
+def execute_chatbot_tool(
+    name: str, raw_input: object, *, selected_fund: str | None = None
+) -> dict:
     """Validate Nova's tool request and call only an explicit service function."""
+    if name == "compare_fund_values" and selected_fund is not None:
+        raise InvalidToolRequest(
+            "Cross-fund comparison conflicts with selector; select All Funds"
+        )
+    if selected_fund is not None:
+        if selected_fund not in SUPPORTED_FUNDS or not isinstance(raw_input, dict):
+            raise InvalidToolRequest("Invalid fund context")
+        raw_input = dict(raw_input)
+        if raw_input.get("fund", selected_fund) != selected_fund:
+            raise InvalidToolRequest(
+                "Fund conflicts with selector; request clarification"
+            )
+        raw_input["fund"] = selected_fund
+
     if not isinstance(raw_input, dict):
         raise InvalidToolRequest("Tool input must be a JSON object.")
 
     try:
+        if name == "compare_fund_values":
+            _ToolArgs.model_validate(raw_input)
+            # JSON conversion preserves decimal precision without exposing account IDs.
+            return TypeAdapter(dict).dump_python(compare_fund_values(), mode="json")
+
+        if name == "get_latest_dividends":
+            args = _LatestDividendsArgs.model_validate(raw_input)
+            return _json_model(
+                _LatestDividendsResponse, get_latest_dividends(args.fund, args.ticker)
+            )
+
         if name == "get_portfolio_summary":
             args = _FundRangeArgs.model_validate(raw_input)
             result = get_portfolio_summary(PortfolioRequest(**_range_request(args)))

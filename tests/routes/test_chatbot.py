@@ -139,3 +139,38 @@ def test_chat_stream_rejects_overlong_message(test_client, mocker):
         app.dependency_overrides.pop(cognito_auth, None)
     assert response.status_code == 422
     stream.assert_not_called()
+
+
+def test_selected_fund_requires_authentication(test_client):
+    assert (
+        test_client.post(
+            "/chat/stream", json={"message": "holdings?", "fund": "quant"}
+        ).status_code
+        == 401
+    )
+
+
+def test_selected_fund_route_and_validation(test_client, mocker):
+    test_client.app.dependency_overrides[cognito_auth] = lambda: {"sub": "test-user"}
+    events = mocker.patch(
+        "app.routers.chatbot.stream_chat_events",
+        return_value=iter(["event: done\ndata: {}\n\n"]),
+    )
+    try:
+        assert (
+            test_client.post(
+                "/chat/stream", json={"message": "holdings?", "fund": "quant"}
+            ).status_code
+            == 200
+        )
+        assert events.call_args.args[2] == "quant"
+        events.reset_mock()
+        assert (
+            test_client.post(
+                "/chat/stream", json={"message": "holdings?", "fund": "bogus"}
+            ).status_code
+            == 422
+        )
+        events.assert_not_called()
+    finally:
+        test_client.app.dependency_overrides.pop(cognito_auth, None)

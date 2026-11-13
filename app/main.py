@@ -6,6 +6,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.types import Receive, Scope, Send
 
 from app.abuse_protection import AbuseProtectionMiddleware, RouteLimit
+from app.observability import lifespan
 from app.response_headers import SecurityResponseHeadersMiddleware
 from app.routers import (
     all_holdings,
@@ -59,6 +60,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(
         title="Silver Fund API",
+        lifespan=lifespan,
         docs_url=None if production else "/docs",
         redoc_url=None if production else "/redoc",
         openapi_url=None if production else "/openapi.json",

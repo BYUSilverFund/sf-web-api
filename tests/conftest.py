@@ -125,6 +125,7 @@ def valid_jwt_token():
 @pytest.fixture(autouse=True)
 def set_test_env_vars(monkeypatch):
     """Set required environment variables for testing."""
+    monkeypatch.setenv("CHATBOT_TRACE_CONTENT_ENABLED", "false")
     monkeypatch.setenv("COGNITO_REGION", "us-east-1")
     monkeypatch.setenv("COGNITO_USER_POOL_ID", "us-east-1_test123")
     monkeypatch.setenv("COGNITO_APP_CLIENT_ID", "test-app-client-id")
